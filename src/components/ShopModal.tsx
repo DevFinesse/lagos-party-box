@@ -21,11 +21,14 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   session
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [customSku, setCustomSku] = useState<string>('');
+  const [lastError, setLastError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleBuy = async (item: StoreItem) => {
     setLoadingId(item.id);
+    setLastError(null);
     sounds.click();
 
     try {
@@ -40,7 +43,38 @@ export const ShopModal: React.FC<ShopModalProps> = ({
         onItemPurchased(item.id);
       } else {
         sounds.buzz();
+        setLastError('Purchase refused or canceled (check dashboard product id)');
       }
+    } catch (err: any) {
+      sounds.buzz();
+      setLastError(err?.code || 'Error');
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleBuyCustom = async () => {
+    if (!customSku) return;
+    setLoadingId(customSku);
+    setLastError(null);
+    sounds.click();
+
+    try {
+      const ok = await vatar.purchasePack(customSku);
+      if (ok) {
+        sounds.victory();
+        confetti({
+          particleCount: 70,
+          spread: 80,
+          origin: { y: 0.5 }
+        });
+      } else {
+        sounds.buzz();
+        setLastError('Purchase refused (is it added and active in dashboard?)');
+      }
+    } catch (err: any) {
+      sounds.buzz();
+      setLastError(err?.code || 'Error');
     } finally {
       setLoadingId(null);
     }
@@ -120,8 +154,36 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           ))}
         </div>
 
+        {/* Custom Product Test Input */}
+        <div className="mt-4 p-3 rounded-2xl bg-black/40 border border-purple-500/20">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-purple-300 mb-1.5">
+            Test any Product ID from your Dashboard:
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="e.g. double_taps or your custom id"
+              value={customSku}
+              onChange={(e) => setCustomSku(e.target.value.toLowerCase().trim())}
+              className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-mono"
+            />
+            <button
+              onClick={handleBuyCustom}
+              disabled={!customSku || !!loadingId}
+              className="px-3 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-bold text-xs transition-colors disabled:opacity-40"
+            >
+              Test Buy
+            </button>
+          </div>
+          {lastError && (
+            <div className="mt-2 text-[11px] text-rose-400 font-mono">
+              ⚠️ Vatar response: <span className="font-bold underline">{lastError}</span>
+            </div>
+          )}
+        </div>
+
         {/* Footer info */}
-        <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
           <span>Processed securely by Lagos Life Pay</span>
           <span className="text-amber-400 font-semibold">70% goes to Creator</span>
         </div>

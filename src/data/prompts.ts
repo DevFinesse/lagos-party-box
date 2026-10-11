@@ -78,6 +78,15 @@ export const NEVER_HAVE_I_EVER_PROMPTS: PromptItem[] = [
 
 export const STORE_ITEMS: StoreItem[] = [
   {
+    id: 'double_taps',
+    name: 'Sample Vatar Item (double_taps)',
+    price: 100,
+    description: 'Default sample test item from Vatar docs. Tests purchase verification immediately.',
+    icon: '⚡',
+    badge: 'TEST ITEM',
+    unlocked: false
+  },
+  {
     id: 'pack_lekki_afterdark',
     name: 'Lekki Afterdark (18+)',
     price: 300,
