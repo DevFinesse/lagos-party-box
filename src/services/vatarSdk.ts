@@ -37,6 +37,27 @@ class VatarService {
   private isStandalone: boolean = false;
   private unlockedPacks: Set<string> = new Set();
 
+  private async claimPurchase(p: { purchaseId: string; productId: string }) {
+    if (!p?.purchaseId) return;
+    this.unlockedPacks.add(p.productId);
+
+    try {
+      let sessionToken = '';
+      if (window.Vatar?.session) {
+        const s = await window.Vatar.session();
+        sessionToken = s.session;
+      }
+      await fetch('/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: sessionToken, purchaseId: p.purchaseId })
+      });
+      console.log('[Vatar] Claimed and delivered purchase:', p.purchaseId);
+    } catch (err) {
+      console.warn('[Vatar] Error claiming purchase with server:', err);
+    }
+  }
+
   public async initialize(): Promise<VatarSession> {
     if (typeof window !== 'undefined' && window.Vatar) {
       try {
@@ -50,13 +71,15 @@ class VatarService {
         };
         this.isStandalone = false;
 
-        // Restore pending undelivered purchases
+        // Restore pending undelivered purchases and tell server to deliver
         const pending = await window.Vatar.purchases();
-        pending.forEach((p) => this.unlockedPacks.add(p.productId));
+        for (const p of pending) {
+          await this.claimPurchase(p);
+        }
 
-        // Listen for new purchases
+        // Listen for new purchases and tell server to deliver
         window.Vatar.onPurchase((p) => {
-          this.unlockedPacks.add(p.productId);
+          this.claimPurchase(p);
         });
 
         return this.sessionData;
@@ -96,20 +119,7 @@ class VatarService {
     try {
       const res = await window.Vatar.purchase(productId);
       if (res && res.productId === productId) {
-        this.unlockedPacks.add(productId);
-
-        // Tell your server to verify and mark delivered (ticks the integration checklist!)
-        try {
-          const { session } = await window.Vatar.session();
-          await fetch('/claim', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session, purchaseId: res.purchaseId })
-          });
-        } catch (claimErr) {
-          console.warn('Server claim error:', claimErr);
-        }
-
+        await this.claimPurchase(res);
         return true;
       }
       return false;
