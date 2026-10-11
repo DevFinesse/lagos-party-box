@@ -12,6 +12,7 @@ interface TruthOrDareProps {
   deckCategory: DeckCategory;
   onUpdateScore: (playerId: string, delta: number) => void;
   onNextTurn: () => void;
+  onSendMessage?: (text: string) => void;
   isVipSkin?: boolean;
 }
 
@@ -21,6 +22,7 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   deckCategory,
   onUpdateScore,
   onNextTurn,
+  onSendMessage,
   isVipSkin
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -30,6 +32,8 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   const [timer, setTimer] = useState<number>(45);
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [resolved, setResolved] = useState<boolean>(false);
+  const [confessionText, setConfessionText] = useState<string>('');
+  const [submittedConfession, setSubmittedConfession] = useState<string | null>(null);
 
   // Timer countdown
   useEffect(() => {
@@ -93,6 +97,20 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     sounds.buzz();
   };
 
+  const handleSendConfession = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!confessionText.trim()) return;
+    const text = confessionText.trim();
+    setSubmittedConfession(text);
+    if (onSendMessage) {
+      onSendMessage(
+        `${selectedPlayer?.id === activeUser.id ? 'My Confession' : `${selectedPlayer?.name}'s Confession`}: "${text}"`
+      );
+    }
+    sounds.click();
+    setConfessionText('');
+  };
+
   const resetRound = () => {
     setSelectedPlayer(null);
     setCurrentPrompt(null);
@@ -100,6 +118,8 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     setResolved(false);
     setTimer(45);
     setTimerActive(false);
+    setConfessionText('');
+    setSubmittedConfession(null);
     onNextTurn();
   };
 
@@ -217,6 +237,43 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
               <p className="font-display text-xl sm:text-2xl font-bold text-center text-white leading-relaxed my-4">
                 "{currentPrompt.text}"
               </p>
+
+              {/* Type response / confession live to the table */}
+              <div className="w-full mt-2 mb-2 p-3 sm:p-4 rounded-2xl bg-black/40 border border-purple-500/20">
+                <form onSubmit={handleSendConfession} className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-purple-300 flex items-center gap-1.5">
+                      <span>💬</span>
+                      <span>{choiceType === 'truth' ? 'Type your truth confession:' : 'Type dare proof / comment:'}</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">Broadcasts to table</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={confessionText}
+                      onChange={(e) => setConfessionText(e.target.value)}
+                      placeholder={choiceType === 'truth' ? 'Spill your secret to everyone…' : 'Tell the table what went down…'}
+                      maxLength={200}
+                      className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-400"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!confessionText.trim()}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-bold transition-all shrink-0 active:scale-95 shadow-md shadow-purple-600/30"
+                    >
+                      Post Gist
+                    </button>
+                  </div>
+                </form>
+
+                {submittedConfession && (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-purple-950/80 border border-purple-400/40 text-xs text-amber-200 animate-fadeIn">
+                    <span className="font-bold text-white">Posted Gist: </span>
+                    "{submittedConfession}"
+                  </div>
+                )}
+              </div>
 
               {/* Action Buttons */}
               {!resolved ? (

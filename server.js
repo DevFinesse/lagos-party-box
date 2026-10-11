@@ -175,6 +175,8 @@ wss.on('connection', (ws) => {
           if (data.deckCategory) room.deckCategory = data.deckCategory;
           broadcastRoomState(userRoomCode);
         }
+      } else if (type === 'chat_message' && userRoomCode) {
+        broadcastRoom(userRoomCode, data);
       } else if (type === 'game_action' && userRoomCode) {
         broadcastRoom(userRoomCode, data, ws);
       } else if (type === 'leave_room' && userRoomCode) {

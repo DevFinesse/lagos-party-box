@@ -1,4 +1,4 @@
-import { Player, GameMode, DeckCategory } from '../types';
+import { Player, GameMode, DeckCategory, ChatMessage } from '../types';
 
 export interface RoomInfo {
   code: string;
@@ -129,6 +129,20 @@ class MultiplayerService {
       this.send('leave_room', { code: this.currentRoomCode });
       this.currentRoomCode = null;
     }
+  }
+
+  public sendChat(text: string, sender: Player) {
+    if (!text.trim()) return;
+    const msg: ChatMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      senderId: sender.id,
+      senderName: sender.name,
+      senderAvatar: sender.avatar,
+      text: text.trim(),
+      timestamp: Date.now()
+    };
+    this.send('chat_message', { message: msg });
+    return msg;
   }
 
   public getInviteLink(roomCode: string): string {

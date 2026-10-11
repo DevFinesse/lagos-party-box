@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameMode, DeckCategory, Player, VatarSession, StoreItem } from './types';
+import { GameMode, DeckCategory, Player, VatarSession, StoreItem, ChatMessage } from './types';
 import { vatar } from './services/vatarSdk';
 import { sounds } from './services/sound';
 import { Navbar } from './components/Navbar';
@@ -8,6 +8,7 @@ import { TruthOrDare } from './components/TruthOrDare';
 import { MostLikelyTo } from './components/MostLikelyTo';
 import { NeverHaveIEver } from './components/NeverHaveIEver';
 import { ShopModal } from './components/ShopModal';
+import { ChatDrawer } from './components/ChatDrawer';
 import { STORE_ITEMS } from './data/prompts';
 import { Trophy, X } from 'lucide-react';
 
@@ -27,6 +28,20 @@ export const App: React.FC = () => {
   // Online Multiplayer Room State
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [isHost, setIsHost] = useState<boolean>(true);
+
+  // In-Game Live Table Banter / Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'welcome_1',
+      senderId: 'sys',
+      senderName: 'Lagos Host',
+      text: 'Welcome to Lagos Party Box! 🎉 Type your confessions, banter, or drop quick reactions!',
+      timestamp: Date.now(),
+      isSystem: true
+    }
+  ]);
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
 
   // Players in the party room
   const [players, setPlayers] = useState<Player[]>([
@@ -89,6 +104,17 @@ export const App: React.FC = () => {
       setInGame(true);
     });
 
+    const unsubChat = multiplayer.on('chat_message', (data: any) => {
+      if (data?.message) {
+        setChatMessages((prev) => {
+          if (prev.some((m) => m.id === data.message.id)) return prev;
+          return [...prev, data.message];
+        });
+        setUnreadChatCount((count) => count + 1);
+        sounds.click();
+      }
+    });
+
     const cleanup = vatar.setupLifecycle(
       () => {
         sounds.enabled = false;
@@ -102,6 +128,7 @@ export const App: React.FC = () => {
       cleanup();
       unsubRoom();
       unsubStart();
+      unsubChat();
     };
   }, []);
 
@@ -179,6 +206,44 @@ export const App: React.FC = () => {
     );
     if (itemId === 'pack_lekki_afterdark') {
       setSelectedCategory('spicy_18');
+    }
+  };
+
+  const handleSendMessage = (text: string) => {
+    const msg = multiplayer.sendChat(text, players[0]);
+    if (msg) {
+      setChatMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    }
+
+    // Friendly Lagos banter replies if in local simulated room
+    if (!roomCode && players.length > 1) {
+      const bots = players.slice(1);
+      const bot = bots[Math.floor(Math.random() * bots.length)];
+      const BOT_BANTER = [
+        '😂😂 Wahala dey tonight!',
+        'Lie lie, no be so o! 🧢',
+        'Gist don sweet die! 🔥',
+        'Abeg drink your drink and keep quiet! 🍻',
+        'Wahala for who no dey Lagos table! 💀',
+        'I swear na real talk! 👏',
+        'Omo see matter! 👀'
+      ];
+      setTimeout(() => {
+        const botMsg: ChatMessage = {
+          id: `bot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          senderId: bot.id,
+          senderName: bot.name,
+          senderAvatar: bot.avatar,
+          text: BOT_BANTER[Math.floor(Math.random() * BOT_BANTER.length)],
+          timestamp: Date.now()
+        };
+        setChatMessages((prev) => [...prev, botMsg]);
+        setUnreadChatCount((prev) => (isChatOpen ? 0 : prev + 1));
+        sounds.click();
+      }, 1500);
     }
   };
 
@@ -269,6 +334,7 @@ export const App: React.FC = () => {
                 deckCategory={selectedCategory}
                 onUpdateScore={handleUpdateScore}
                 onNextTurn={() => {}}
+                onSendMessage={handleSendMessage}
                 isVipSkin={
                   storeItems.find((i) => i.id === 'pack_vip_bottle')?.unlocked ||
                   vatar.isUnlocked('pack_vip_bottle')
@@ -298,6 +364,19 @@ export const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Floating Live Banter & Chat Drawer */}
+      <ChatDrawer
+        messages={chatMessages}
+        onSendMessage={handleSendMessage}
+        activeUser={players[0]}
+        isOpen={isChatOpen}
+        onToggle={() => {
+          if (!isChatOpen) setUnreadChatCount(0);
+          setIsChatOpen(!isChatOpen);
+        }}
+        unreadCount={unreadChatCount}
+      />
 
       {/* VIP Deck Shop Modal */}
       <ShopModal

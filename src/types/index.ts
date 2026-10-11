@@ -54,3 +54,13 @@ export interface StoreItem {
   badge?: string;
   unlocked: boolean;
 }
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string | null;
+  text: string;
+  timestamp: number;
+  isSystem?: boolean;
+}
