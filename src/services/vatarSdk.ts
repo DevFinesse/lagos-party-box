@@ -37,9 +37,29 @@ class VatarService {
   private isStandalone: boolean = false;
   private unlockedPacks: Set<string> = new Set();
 
+  constructor() {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('ll_party_unlocked_packs');
+        if (saved) {
+          JSON.parse(saved).forEach((id: string) => this.unlockedPacks.add(id));
+        }
+      }
+    } catch (e) {}
+  }
+
+  private saveUnlocked() {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ll_party_unlocked_packs', JSON.stringify([...this.unlockedPacks]));
+      }
+    } catch (e) {}
+  }
+
   private async claimPurchase(p: { purchaseId: string; productId: string }) {
     if (!p?.purchaseId) return;
     this.unlockedPacks.add(p.productId);
+    this.saveUnlocked();
 
     try {
       let sessionToken = '';

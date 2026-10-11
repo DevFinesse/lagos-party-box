@@ -12,6 +12,7 @@ interface TruthOrDareProps {
   deckCategory: DeckCategory;
   onUpdateScore: (playerId: string, delta: number) => void;
   onNextTurn: () => void;
+  isVipSkin?: boolean;
 }
 
 export const TruthOrDare: React.FC<TruthOrDareProps> = ({
@@ -19,7 +20,8 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   activeUser,
   deckCategory,
   onUpdateScore,
-  onNextTurn
+  onNextTurn,
+  isVipSkin
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
@@ -121,6 +123,7 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
             isSpinning={isSpinning}
             setIsSpinning={setIsSpinning}
             selectedPlayer={selectedPlayer}
+            isVipSkin={isVipSkin}
           />
         </div>
       )}

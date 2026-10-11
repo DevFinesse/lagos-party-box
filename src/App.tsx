@@ -34,6 +34,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     vatar.initialize().then((sess) => {
       setSession(sess);
+      setStoreItems((prev) =>
+        prev.map((item) => ({ ...item, unlocked: vatar.isUnlocked(item.id) }))
+      );
       if (sess.name) {
         setPlayers((prev) => [
           { ...prev[0], id: sess.playerId, name: sess.name, avatar: sess.avatar },
@@ -175,6 +178,10 @@ export const App: React.FC = () => {
                 deckCategory={selectedCategory}
                 onUpdateScore={handleUpdateScore}
                 onNextTurn={() => {}}
+                isVipSkin={
+                  storeItems.find((i) => i.id === 'pack_vip_bottle')?.unlocked ||
+                  vatar.isUnlocked('pack_vip_bottle')
+                }
               />
             )}
 
