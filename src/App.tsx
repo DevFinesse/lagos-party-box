@@ -11,6 +11,8 @@ import { ShopModal } from './components/ShopModal';
 import { STORE_ITEMS } from './data/prompts';
 import { Trophy, X } from 'lucide-react';
 
+import { multiplayer } from './services/multiplayer';
+
 export const App: React.FC = () => {
   const [session, setSession] = useState<VatarSession | null>(null);
   const [inGame, setInGame] = useState<boolean>(false);
@@ -21,6 +23,10 @@ export const App: React.FC = () => {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
   const [storeItems, setStoreItems] = useState<StoreItem[]>(STORE_ITEMS);
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
+
+  // Online Multiplayer Room State
+  const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [isHost, setIsHost] = useState<boolean>(true);
 
   // Players in the party room
   const [players, setPlayers] = useState<Player[]>([
@@ -37,12 +43,50 @@ export const App: React.FC = () => {
       setStoreItems((prev) =>
         prev.map((item) => ({ ...item, unlocked: vatar.isUnlocked(item.id) }))
       );
-      if (sess.name) {
-        setPlayers((prev) => [
-          { ...prev[0], id: sess.playerId, name: sess.name, avatar: sess.avatar },
-          ...prev.slice(1)
-        ]);
+
+      const activeUser: Player = {
+        id: sess.playerId,
+        name: sess.name || 'Lagosian',
+        avatar: sess.avatar,
+        hearts: 3,
+        score: 0,
+        isHost: true
+      };
+
+      setPlayers((prev) => [activeUser, ...prev.slice(1)]);
+
+      // Check if URL has ?room=CODE invite
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteRoom = urlParams.get('room');
+        if (inviteRoom) {
+          console.log('[Multiplayer] Found room invite in URL:', inviteRoom);
+          multiplayer.joinRoom(inviteRoom, activeUser);
+          setRoomCode(inviteRoom.toUpperCase());
+          setIsHost(false);
+        }
       }
+    });
+
+    // Multiplayer room listeners
+    const unsubRoom = multiplayer.on('room_state', (data: any) => {
+      const { room } = data;
+      if (!room) return;
+      console.log('[Multiplayer] Received room state:', room);
+      setRoomCode(room.code);
+      if (room.players && room.players.length > 0) {
+        setPlayers(room.players);
+        setIsHost(room.hostId === room.players[0]?.id);
+      }
+      if (room.mode) setSelectedMode(room.mode);
+      if (room.deckCategory) setSelectedCategory(room.deckCategory);
+    });
+
+    const unsubStart = multiplayer.on('game_started', (data: any) => {
+      if (data.mode) setSelectedMode(data.mode);
+      if (data.deckCategory) setSelectedCategory(data.deckCategory);
+      sounds.victory();
+      setInGame(true);
     });
 
     const cleanup = vatar.setupLifecycle(
@@ -54,8 +98,41 @@ export const App: React.FC = () => {
       }
     );
 
-    return cleanup;
+    return () => {
+      cleanup();
+      unsubRoom();
+      unsubStart();
+    };
   }, []);
+
+  const handleCreateRoom = () => {
+    sounds.click();
+    const code = multiplayer.createRoom(players[0], selectedMode, selectedCategory);
+    setRoomCode(code);
+    setIsHost(true);
+    setPlayers([players[0]]); // Starts with host only; friends join via link!
+  };
+
+  const handleJoinRoom = (code: string) => {
+    sounds.click();
+    multiplayer.joinRoom(code, players[0]);
+    setRoomCode(code.toUpperCase());
+    setIsHost(false);
+  };
+
+  const handleLeaveRoom = () => {
+    sounds.buzz();
+    multiplayer.leaveRoom();
+    setRoomCode(null);
+    setIsHost(true);
+    // Restore default simulated group
+    setPlayers([
+      players[0],
+      { id: 'p_emeka', name: 'Emeka', avatar: null, hearts: 3, score: 0 },
+      { id: 'p_tiwa', name: 'Tiwa', avatar: null, hearts: 3, score: 0 },
+      { id: 'p_segun', name: 'Segun', avatar: null, hearts: 3, score: 0 }
+    ]);
+  };
 
   const handleToggleSound = () => {
     sounds.enabled = !soundEnabled;
@@ -156,18 +233,32 @@ export const App: React.FC = () => {
         {!inGame ? (
           <Lobby
             selectedMode={selectedMode}
-            onSelectMode={setSelectedMode}
+            onSelectMode={(m) => {
+              setSelectedMode(m);
+              if (roomCode && isHost) multiplayer.send('update_settings', { mode: m });
+            }}
             selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
+            onSelectCategory={(c) => {
+              setSelectedCategory(c);
+              if (roomCode && isHost) multiplayer.send('update_settings', { deckCategory: c });
+            }}
             players={players}
             onAddPlayer={handleAddPlayer}
             onRemovePlayer={handleRemovePlayer}
             onStartGame={() => {
               sounds.victory();
+              if (roomCode) {
+                multiplayer.startGame();
+              }
               setInGame(true);
             }}
             storeItems={storeItems}
             onOpenShop={() => setIsShopOpen(true)}
+            roomCode={roomCode}
+            isHost={isHost}
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            onLeaveRoom={handleLeaveRoom}
           />
         ) : (
           <div className="w-full flex flex-col items-center">

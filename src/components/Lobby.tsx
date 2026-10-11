@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { GameMode, DeckCategory, Player, StoreItem } from '../types';
 import { sounds } from '../services/sound';
-import { Sparkles, Users, Lock, Plus, Trash2, Play } from 'lucide-react';
+import { multiplayer } from '../services/multiplayer';
+import { Sparkles, Users, Lock, Plus, Trash2, Play, Share2, Copy, Check, MessageSquare, LogOut, Radio } from 'lucide-react';
 
 interface LobbyProps {
   selectedMode: GameMode;
@@ -14,6 +15,11 @@ interface LobbyProps {
   onStartGame: () => void;
   storeItems: StoreItem[];
   onOpenShop: () => void;
+  roomCode: string | null;
+  isHost: boolean;
+  onCreateRoom: () => void;
+  onJoinRoom: (code: string) => void;
+  onLeaveRoom: () => void;
 }
 
 export const Lobby: React.FC<LobbyProps> = ({
@@ -26,11 +32,51 @@ export const Lobby: React.FC<LobbyProps> = ({
   onRemovePlayer,
   onStartGame,
   storeItems,
-  onOpenShop
+  onOpenShop,
+  roomCode,
+  isHost,
+  onCreateRoom,
+  onJoinRoom,
+  onLeaveRoom
 }) => {
   const [newPlayerName, setNewPlayerName] = useState<string>('');
+  const [inputCode, setInputCode] = useState<string>('');
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [showJoinInput, setShowJoinInput] = useState<boolean>(false);
 
   const lekkiPackUnlocked = storeItems.find((i) => i.id === 'pack_lekki_afterdark')?.unlocked;
+
+  const handleCopyLink = () => {
+    if (!roomCode) return;
+    const link = multiplayer.getInviteLink(roomCode);
+    navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    sounds.click();
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyCode = () => {
+    if (!roomCode) return;
+    navigator.clipboard.writeText(roomCode);
+    setCopiedCode(true);
+    sounds.click();
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!roomCode) return;
+    window.open(multiplayer.getWhatsAppShareLink(roomCode), '_blank');
+  };
+
+  const handleJoinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputCode.trim()) {
+      onJoinRoom(inputCode.trim());
+      setInputCode('');
+      sounds.click();
+    }
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +102,117 @@ export const Lobby: React.FC<LobbyProps> = ({
           The ultimate cheat-proof multiplayer party suite for Lagosians. Choose your poison and call out your friends!
         </p>
       </div>
+
+      {/* ONLINE ROOM MANAGEMENT */}
+      {roomCode ? (
+        /* Active Online Room Card */
+        <div className="w-full p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-[#1E1136] via-[#160D2A] to-[#120824] border border-purple-500/30 shadow-[0_10px_40px_-10px_rgba(168,85,247,0.3)] mb-8 animate-scaleUp">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                  LIVE PARTY ROOM ACTIVE
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400">ROOM CODE:</span>
+                <span className="font-mono text-2xl sm:text-3xl font-black text-amber-300 tracking-wider">
+                  {roomCode}
+                </span>
+                <button
+                  onClick={handleCopyCode}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors"
+                  title="Copy Room Code"
+                >
+                  {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                  <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Share Actions */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-semibold text-xs transition-all shadow-sm active:scale-95"
+              >
+                {copiedLink ? <Check className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4 text-[#E9C9FF]" />}
+                <span>{copiedLink ? 'Link Copied!' : 'Copy Invite Link'}</span>
+              </button>
+
+              <button
+                onClick={handleWhatsAppShare}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm active:scale-95"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>WhatsApp Invite</span>
+              </button>
+
+              <button
+                onClick={onLeaveRoom}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold text-xs transition-colors ml-auto sm:ml-0"
+                title="Leave Room"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Leave</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+            <span>{isHost ? '👑 You are Room Host (Only you can start the round)' : '🎮 Connected to table. Waiting for host to start...'}</span>
+            <span className="font-semibold text-purple-300">{players.length} players connected</span>
+          </div>
+        </div>
+      ) : (
+        /* Create or Join Room Buttons */
+        <div className="w-full mb-8 p-4 rounded-3xl bg-[#140F24]/80 border border-white/10">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <button
+              onClick={onCreateRoom}
+              className="flex-1 w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-95"
+            >
+              <Radio className="h-4 w-4 text-amber-300" />
+              <span>Create Online Room (Get Code & Link)</span>
+            </button>
+
+            {!showJoinInput ? (
+              <button
+                onClick={() => setShowJoinInput(true)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-sm transition-all"
+              >
+                <span>Join with Room Code</span>
+              </button>
+            ) : (
+              <form onSubmit={handleJoinSubmit} className="flex gap-2 w-full sm:w-auto animate-fadeIn">
+                <input
+                  type="text"
+                  placeholder="6-LETTER CODE"
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  className="w-36 rounded-2xl bg-black/60 border border-purple-400 px-3 py-2 text-center font-mono font-bold text-white text-sm focus:outline-none tracking-widest uppercase"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs"
+                >
+                  Join
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowJoinInput(false)}
+                  className="px-2 py-2 text-slate-400 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 1. Game Mode Selection */}
       <div className="w-full mb-8">

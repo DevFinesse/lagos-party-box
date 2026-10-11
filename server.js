@@ -123,40 +123,114 @@ const server = http.createServer(async (req, res) => {
 
 // Real-time WebSocket Room Manager
 const wss = new WebSocketServer({ server });
-const rooms = new Map(); // roomCode -> Set of websockets
+const rooms = new Map(); // roomCode -> { code, hostId, mode, deckCategory, inGame, clients: Map<ws, player> }
 
 wss.on('connection', (ws) => {
-  let currentRoom = null;
+  let userRoomCode = null;
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString());
-      if (data.type === 'join_room') {
-        currentRoom = data.roomCode;
-        if (!rooms.has(currentRoom)) rooms.set(currentRoom, new Set());
-        rooms.get(currentRoom).add(ws);
-        broadcast(currentRoom, { type: 'player_joined', player: data.player });
-      } else if (data.type === 'game_action' && currentRoom) {
-        broadcast(currentRoom, data, ws);
+      const { type, roomCode } = data;
+
+      if (type === 'create_room') {
+        userRoomCode = data.code;
+        const newRoom = {
+          code: data.code,
+          hostId: data.player.id,
+          mode: data.mode || 'truth_or_dare',
+          deckCategory: data.deckCategory || 'all',
+          inGame: false,
+          clients: new Map()
+        };
+        newRoom.clients.set(ws, { ...data.player, isHost: true });
+        rooms.set(userRoomCode, newRoom);
+        broadcastRoomState(userRoomCode);
+      } else if (type === 'join_room') {
+        userRoomCode = (roomCode || data.code || '').toUpperCase().trim();
+        let room = rooms.get(userRoomCode);
+        if (!room) {
+          room = {
+            code: userRoomCode,
+            hostId: data.player.id,
+            mode: 'truth_or_dare',
+            deckCategory: 'all',
+            inGame: false,
+            clients: new Map()
+          };
+          rooms.set(userRoomCode, room);
+        }
+        room.clients.set(ws, { ...data.player, isHost: room.clients.size === 0 });
+        broadcastRoomState(userRoomCode);
+      } else if (type === 'start_game' && userRoomCode) {
+        const room = rooms.get(userRoomCode);
+        if (room) {
+          room.inGame = true;
+          broadcastRoom(userRoomCode, { type: 'game_started', mode: room.mode, deckCategory: room.deckCategory });
+        }
+      } else if (type === 'update_settings' && userRoomCode) {
+        const room = rooms.get(userRoomCode);
+        if (room) {
+          if (data.mode) room.mode = data.mode;
+          if (data.deckCategory) room.deckCategory = data.deckCategory;
+          broadcastRoomState(userRoomCode);
+        }
+      } else if (type === 'game_action' && userRoomCode) {
+        broadcastRoom(userRoomCode, data, ws);
+      } else if (type === 'leave_room' && userRoomCode) {
+        removeClient(userRoomCode, ws);
+        userRoomCode = null;
       }
     } catch (e) {
-      console.warn('WS error:', e);
+      console.warn('WS message error:', e);
     }
   });
 
   ws.on('close', () => {
-    if (currentRoom && rooms.has(currentRoom)) {
-      rooms.get(currentRoom).delete(ws);
-      if (rooms.get(currentRoom).size === 0) rooms.delete(currentRoom);
+    if (userRoomCode) {
+      removeClient(userRoomCode, ws);
     }
   });
 });
 
-function broadcast(roomCode, msg, sender = null) {
-  const clients = rooms.get(roomCode);
-  if (!clients) return;
+function removeClient(roomCode, ws) {
+  const room = rooms.get(roomCode);
+  if (!room) return;
+  room.clients.delete(ws);
+  if (room.clients.size === 0) {
+    rooms.delete(roomCode);
+  } else {
+    const firstClient = room.clients.values().next().value;
+    if (firstClient) {
+      firstClient.isHost = true;
+      room.hostId = firstClient.id;
+    }
+    broadcastRoomState(roomCode);
+  }
+}
+
+function broadcastRoomState(roomCode) {
+  const room = rooms.get(roomCode);
+  if (!room) return;
+  const players = Array.from(room.clients.values());
+  broadcastRoom(roomCode, {
+    type: 'room_state',
+    room: {
+      code: room.code,
+      hostId: room.hostId,
+      mode: room.mode,
+      deckCategory: room.deckCategory,
+      inGame: room.inGame,
+      players
+    }
+  });
+}
+
+function broadcastRoom(roomCode, msg, sender = null) {
+  const room = rooms.get(roomCode);
+  if (!room) return;
   const payload = JSON.stringify(msg);
-  for (const client of clients) {
+  for (const client of room.clients.keys()) {
     if (client !== sender && client.readyState === WebSocket.OPEN) {
       client.send(payload);
     }
