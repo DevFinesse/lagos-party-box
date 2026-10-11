@@ -145,6 +145,14 @@ class MultiplayerService {
     return msg;
   }
 
+  public sendVoiceSignal(targetId: string, senderId: string, signal: any) {
+    this.send('voice_signal', { targetId, senderId, signal });
+  }
+
+  public sendVoiceSpeaking(playerId: string, isSpeaking: boolean) {
+    this.send('voice_speaking', { playerId, isSpeaking });
+  }
+
   public getInviteLink(roomCode: string): string {
     if (typeof window === 'undefined') return '';
     const url = new URL(window.location.href);

@@ -10,6 +10,7 @@ import { NeverHaveIEver } from './components/NeverHaveIEver';
 import { ShopModal } from './components/ShopModal';
 import { ChatDrawer } from './components/ChatDrawer';
 import { SprayMoney } from './components/SprayMoney';
+import { VoiceControls } from './components/VoiceControls';
 import { CustomPromptModal } from './components/CustomPromptModal';
 import { PartyBlotterModal } from './components/PartyBlotterModal';
 import { STORE_ITEMS, addCustomPrompt } from './data/prompts';
@@ -440,6 +441,12 @@ export const App: React.FC = () => {
       <SprayMoney
         onSprayBroadcast={handleSprayBroadcast}
         activeUserName={players[0].name}
+      />
+
+      {/* Floating WebRTC Voice Chat Controls */}
+      <VoiceControls
+        activePlayer={players[0]}
+        players={players}
       />
 
       {/* Anonymous Custom Prompt Modal */}

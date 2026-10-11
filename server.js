@@ -179,6 +179,22 @@ wss.on('connection', (ws) => {
         broadcastRoom(userRoomCode, data);
       } else if (type === 'game_action' && userRoomCode) {
         broadcastRoom(userRoomCode, data, ws);
+      } else if (type === 'voice_signal' && userRoomCode) {
+        const room = rooms.get(userRoomCode);
+        if (room && data.targetId) {
+          for (const [clientWs, player] of room.clients.entries()) {
+            if (player.id === data.targetId && clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(JSON.stringify({
+                type: 'voice_signal',
+                senderId: data.senderId,
+                signal: data.signal
+              }));
+              break;
+            }
+          }
+        }
+      } else if (type === 'voice_speaking' && userRoomCode) {
+        broadcastRoom(userRoomCode, data, ws);
       } else if (type === 'leave_room' && userRoomCode) {
         removeClient(userRoomCode, ws);
         userRoomCode = null;
