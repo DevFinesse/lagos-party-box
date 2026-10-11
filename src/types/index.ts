@@ -16,7 +16,7 @@ export interface PromptItem {
   id: string;
   category: DeckCategory;
   text: string;
-  type?: 'truth' | 'dare'; // for truth or dare
+  type?: 'truth' | 'dare' | 'most_likely' | 'never_ever';
   spicy?: boolean;
 }
 

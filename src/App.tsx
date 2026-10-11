@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameMode, DeckCategory, Player, VatarSession, StoreItem, ChatMessage } from './types';
+import { GameMode, DeckCategory, Player, VatarSession, StoreItem, ChatMessage, PromptItem } from './types';
 import { vatar } from './services/vatarSdk';
 import { sounds } from './services/sound';
 import { Navbar } from './components/Navbar';
@@ -9,7 +9,10 @@ import { MostLikelyTo } from './components/MostLikelyTo';
 import { NeverHaveIEver } from './components/NeverHaveIEver';
 import { ShopModal } from './components/ShopModal';
 import { ChatDrawer } from './components/ChatDrawer';
-import { STORE_ITEMS } from './data/prompts';
+import { SprayMoney } from './components/SprayMoney';
+import { CustomPromptModal } from './components/CustomPromptModal';
+import { PartyBlotterModal } from './components/PartyBlotterModal';
+import { STORE_ITEMS, addCustomPrompt } from './data/prompts';
 import { Trophy, X } from 'lucide-react';
 
 import { multiplayer } from './services/multiplayer';
@@ -20,8 +23,11 @@ export const App: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<GameMode>('truth_or_dare');
   const [selectedCategory, setSelectedCategory] = useState<DeckCategory>('all');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [musicEnabled, setMusicEnabled] = useState<boolean>(false);
   const [isShopOpen, setIsShopOpen] = useState<boolean>(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
+  const [isCustomPromptOpen, setIsCustomPromptOpen] = useState<boolean>(false);
+  const [isBlotterOpen, setIsBlotterOpen] = useState<boolean>(false);
   const [storeItems, setStoreItems] = useState<StoreItem[]>(STORE_ITEMS);
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
 
@@ -115,6 +121,25 @@ export const App: React.FC = () => {
       }
     });
 
+    const unsubGameAction = multiplayer.on('game_action', (data: any) => {
+      if (data?.action === 'add_custom_prompt') {
+        addCustomPrompt(data.data.prompt);
+        sounds.click();
+        const msg: ChatMessage = {
+          id: `custom_prompt_${Date.now()}`,
+          senderId: 'sys',
+          senderName: 'Lagos Host',
+          text: `✍️ A new ${data.data.isAnonymous ? 'anonymous' : data.data.authorName} prompt was slipped into the deck!`,
+          timestamp: Date.now(),
+          isSystem: true
+        };
+        setChatMessages((prev) => [...prev, msg]);
+        setUnreadChatCount((count) => count + 1);
+      } else if (data?.action === 'spray_money') {
+        window.dispatchEvent(new CustomEvent('lagos_spray_money', { detail: { name: data.data.senderName } }));
+      }
+    });
+
     const cleanup = vatar.setupLifecycle(
       () => {
         sounds.enabled = false;
@@ -129,6 +154,7 @@ export const App: React.FC = () => {
       unsubRoom();
       unsubStart();
       unsubChat();
+      unsubGameAction();
     };
   }, []);
 
@@ -247,6 +273,34 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleToggleMusic = () => {
+    const active = sounds.toggleMusic();
+    setMusicEnabled(active);
+  };
+
+  const handleSprayBroadcast = () => {
+    multiplayer.broadcastAction('spray_money', { senderName: players[0].name });
+  };
+
+  const handleSubmitCustomPrompt = (prompt: PromptItem, isAnonymous: boolean) => {
+    addCustomPrompt(prompt);
+    multiplayer.broadcastAction('add_custom_prompt', {
+      prompt,
+      isAnonymous,
+      authorName: players[0].name
+    });
+    const alertMsg: ChatMessage = {
+      id: `custom_prompt_${Date.now()}`,
+      senderId: 'sys',
+      senderName: 'Lagos Host',
+      text: `✍️ ${isAnonymous ? 'Someone' : players[0].name} slipped a new prompt into the deck!`,
+      timestamp: Date.now(),
+      isSystem: true
+    };
+    setChatMessages((prev) => [...prev, alertMsg]);
+    sounds.victory();
+  };
+
   const handleOpenLeaderboard = async () => {
     sounds.click();
     const data = await vatar.getLeaderboard();
@@ -290,6 +344,10 @@ export const App: React.FC = () => {
         }}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
+        musicEnabled={musicEnabled}
+        onToggleMusic={handleToggleMusic}
+        onOpenCustomPrompt={() => setIsCustomPromptOpen(true)}
+        onOpenBlotter={() => setIsBlotterOpen(true)}
         inGame={inGame}
       />
 
@@ -376,6 +434,30 @@ export const App: React.FC = () => {
           setIsChatOpen(!isChatOpen);
         }}
         unreadCount={unreadChatCount}
+      />
+
+      {/* Floating 💸 Spray Naira Cash Button & Particles */}
+      <SprayMoney
+        onSprayBroadcast={handleSprayBroadcast}
+        activeUserName={players[0].name}
+      />
+
+      {/* Anonymous Custom Prompt Modal */}
+      <CustomPromptModal
+        isOpen={isCustomPromptOpen}
+        onClose={() => setIsCustomPromptOpen(false)}
+        onSubmitPrompt={handleSubmitCustomPrompt}
+      />
+
+      {/* Lagos Party Police Blotter Share Modal */}
+      <PartyBlotterModal
+        isOpen={isBlotterOpen}
+        onClose={() => setIsBlotterOpen(false)}
+        players={players}
+        onPlayAgain={() => {
+          setInGame(false);
+          setIsBlotterOpen(false);
+        }}
       />
 
       {/* VIP Deck Shop Modal */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Player, PromptItem, DeckCategory } from '../types';
 import { NEVER_HAVE_I_EVER_PROMPTS } from '../data/prompts';
 import { sounds } from '../services/sound';
+import { multiplayer } from '../services/multiplayer';
 import { ArrowRight, Beer, ShieldCheck } from 'lucide-react';
 
 interface NeverHaveIEverProps {
@@ -22,17 +23,25 @@ export const NeverHaveIEver: React.FC<NeverHaveIEverProps> = ({
   const [currentPrompt, setCurrentPrompt] = useState<PromptItem | null>(null);
   const [answered, setAnswered] = useState<boolean>(false);
   const [myChoice, setMyChoice] = useState<'guilty' | 'clean' | null>(null);
+  const [tableResponses, setTableResponses] = useState<Record<string, 'guilty' | 'clean'>>({});
 
-  const pickNewPrompt = () => {
-    const filtered = NEVER_HAVE_I_EVER_PROMPTS.filter((p) => {
-      if (deckCategory === 'all') return true;
-      if (deckCategory === 'spicy_18') return p.spicy || p.category === 'spicy_18';
-      return p.category === deckCategory;
-    });
-    const chosen = filtered[Math.floor(Math.random() * filtered.length)] || NEVER_HAVE_I_EVER_PROMPTS[0];
-    setCurrentPrompt(chosen);
+  const pickNewPrompt = (providedPrompt?: PromptItem) => {
+    if (providedPrompt) {
+      setCurrentPrompt(providedPrompt);
+    } else {
+      const filtered = NEVER_HAVE_I_EVER_PROMPTS.filter((p) => {
+        if (deckCategory === 'all') return true;
+        if (deckCategory === 'spicy_18') return p.spicy || p.category === 'spicy_18';
+        return p.category === deckCategory;
+      });
+      const chosen = filtered[Math.floor(Math.random() * filtered.length)] || NEVER_HAVE_I_EVER_PROMPTS[0];
+      setCurrentPrompt(chosen);
+      multiplayer.broadcastAction('nhe_prompt', { prompt: chosen });
+    }
+
     setAnswered(false);
     setMyChoice(null);
+    setTableResponses({});
     sounds.suspense();
   };
 
@@ -40,21 +49,46 @@ export const NeverHaveIEver: React.FC<NeverHaveIEverProps> = ({
     pickNewPrompt();
   }, [deckCategory]);
 
+  // Multiplayer listeners
+  useEffect(() => {
+    const unsub = multiplayer.on('game_action', (data: any) => {
+      if (data?.action === 'nhe_prompt') {
+        pickNewPrompt(data.data?.prompt);
+      } else if (data?.action === 'nhe_answer') {
+        setTableResponses((prev) => ({ ...prev, [data.data.playerId]: data.data.choice }));
+        if (data.data.choice === 'guilty') {
+          sounds.drink();
+        } else {
+          sounds.click();
+        }
+      } else if (data?.action === 'nhe_next') {
+        pickNewPrompt();
+      }
+    });
+
+    return () => unsub();
+  }, [players]);
+
   const handleGuilty = () => {
     setMyChoice('guilty');
     setAnswered(true);
+    setTableResponses((prev) => ({ ...prev, [activeUser.id]: 'guilty' }));
     sounds.drink();
     onTakeShot(activeUser.id);
+    multiplayer.broadcastAction('nhe_answer', { playerId: activeUser.id, choice: 'guilty' });
   };
 
   const handleClean = () => {
     setMyChoice('clean');
     setAnswered(true);
+    setTableResponses((prev) => ({ ...prev, [activeUser.id]: 'clean' }));
     sounds.click();
+    multiplayer.broadcastAction('nhe_answer', { playerId: activeUser.id, choice: 'clean' });
   };
 
   const handleNext = () => {
     pickNewPrompt();
+    multiplayer.broadcastAction('nhe_next', {});
     onNextRound();
   };
 

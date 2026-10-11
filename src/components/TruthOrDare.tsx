@@ -3,6 +3,7 @@ import { Player, PromptItem, DeckCategory } from '../types';
 import { BottleSpinner } from './BottleSpinner';
 import { TRUTH_PROMPTS, DARE_PROMPTS } from '../data/prompts';
 import { sounds } from '../services/sound';
+import { multiplayer } from '../services/multiplayer';
 import confetti from 'canvas-confetti';
 import { Flame, MessageCircle, Beer, Clock, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 
@@ -35,6 +36,51 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   const [confessionText, setConfessionText] = useState<string>('');
   const [submittedConfession, setSubmittedConfession] = useState<string | null>(null);
 
+  // Sync with other multiplayer clients in room
+  useEffect(() => {
+    const unsub = multiplayer.on('game_action', (data: any) => {
+      if (data?.action === 'tod_spin_end') {
+        const found = players.find((p) => p.id === data.data?.playerId);
+        if (found) {
+          sounds.click();
+          setSelectedPlayer(found);
+        }
+      } else if (data?.action === 'tod_choose_prompt') {
+        setChoiceType(data.data.choiceType);
+        setCurrentPrompt(data.data.prompt);
+        setTimer(45);
+        setTimerActive(true);
+        sounds.suspense();
+      } else if (data?.action === 'tod_forfeit') {
+        setChoiceType('forfeit');
+        setResolved(true);
+        sounds.drink();
+        sounds.buzz();
+      } else if (data?.action === 'tod_resolve') {
+        setResolved(true);
+        setTimerActive(false);
+        if (data.data.completed) {
+          sounds.victory();
+          sounds.horn();
+          confetti({ particleCount: 70, spread: 60 });
+        } else {
+          sounds.buzz();
+        }
+      } else if (data?.action === 'tod_reset') {
+        setSelectedPlayer(null);
+        setCurrentPrompt(null);
+        setChoiceType(null);
+        setResolved(false);
+        setTimer(45);
+        setTimerActive(false);
+        setConfessionText('');
+        setSubmittedConfession(null);
+      }
+    });
+
+    return () => unsub();
+  }, [players]);
+
   // Timer countdown
   useEffect(() => {
     let interval: any;
@@ -55,7 +101,7 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   // Pick prompt based on choice
   const handleChoice = (type: 'truth' | 'dare') => {
     setChoiceType(type);
-    sounds.suspense();
+    sounds.drumRoll();
 
     const pool = type === 'truth' ? TRUTH_PROMPTS : DARE_PROMPTS;
     const filtered = pool.filter((p) => {
@@ -68,6 +114,8 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     setCurrentPrompt(chosen);
     setTimer(45);
     setTimerActive(true);
+
+    multiplayer.broadcastAction('tod_choose_prompt', { choiceType: type, prompt: chosen });
   };
 
   const handleForfeit = () => {
@@ -75,12 +123,14 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     setResolved(true);
     sounds.drink();
     sounds.buzz();
+    multiplayer.broadcastAction('tod_forfeit', {});
   };
 
   const handleComplete = () => {
     setResolved(true);
     setTimerActive(false);
     sounds.victory();
+    sounds.horn();
     confetti({
       particleCount: 80,
       spread: 70,
@@ -89,12 +139,14 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     if (selectedPlayer) {
       onUpdateScore(selectedPlayer.id, 50);
     }
+    multiplayer.broadcastAction('tod_resolve', { completed: true });
   };
 
   const handleChickenOut = () => {
     setResolved(true);
     setTimerActive(false);
     sounds.buzz();
+    multiplayer.broadcastAction('tod_resolve', { completed: false });
   };
 
   const handleSendConfession = (e?: React.FormEvent) => {
@@ -120,6 +172,7 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     setTimerActive(false);
     setConfessionText('');
     setSubmittedConfession(null);
+    multiplayer.broadcastAction('tod_reset', {});
     onNextTurn();
   };
 
@@ -139,7 +192,10 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
 
           <BottleSpinner
             players={players}
-            onPlayerSelected={(p) => setSelectedPlayer(p)}
+            onPlayerSelected={(p) => {
+              setSelectedPlayer(p);
+              multiplayer.broadcastAction('tod_spin_end', { playerId: p.id });
+            }}
             isSpinning={isSpinning}
             setIsSpinning={setIsSpinning}
             selectedPlayer={selectedPlayer}

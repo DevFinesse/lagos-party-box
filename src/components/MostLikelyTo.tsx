@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Player, PromptItem, DeckCategory } from '../types';
 import { MOST_LIKELY_TO_PROMPTS } from '../data/prompts';
 import { sounds } from '../services/sound';
+import { multiplayer } from '../services/multiplayer';
 import confetti from 'canvas-confetti';
 import { Clock, ArrowRight, Heart, AlertCircle } from 'lucide-react';
 
@@ -28,14 +29,20 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
   const [culprit, setCulprit] = useState<Player | null>(null);
 
   // Initialize new prompt
-  const pickNewPrompt = () => {
-    const filtered = MOST_LIKELY_TO_PROMPTS.filter((p) => {
-      if (deckCategory === 'all') return true;
-      if (deckCategory === 'spicy_18') return p.spicy || p.category === 'spicy_18';
-      return p.category === deckCategory;
-    });
-    const chosen = filtered[Math.floor(Math.random() * filtered.length)] || MOST_LIKELY_TO_PROMPTS[0];
-    setCurrentPrompt(chosen);
+  const pickNewPrompt = (providedPrompt?: PromptItem) => {
+    if (providedPrompt) {
+      setCurrentPrompt(providedPrompt);
+    } else {
+      const filtered = MOST_LIKELY_TO_PROMPTS.filter((p) => {
+        if (deckCategory === 'all') return true;
+        if (deckCategory === 'spicy_18') return p.spicy || p.category === 'spicy_18';
+        return p.category === deckCategory;
+      });
+      const chosen = filtered[Math.floor(Math.random() * filtered.length)] || MOST_LIKELY_TO_PROMPTS[0];
+      setCurrentPrompt(chosen);
+      multiplayer.broadcastAction('mlt_new_prompt', { prompt: chosen });
+    }
+
     setVotes({});
     setMyVote(null);
     setRevealed(false);
@@ -47,6 +54,33 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
   useEffect(() => {
     pickNewPrompt();
   }, [deckCategory]);
+
+  // Multiplayer listeners
+  useEffect(() => {
+    const unsub = multiplayer.on('game_action', (data: any) => {
+      if (data?.action === 'mlt_new_prompt') {
+        pickNewPrompt(data.data?.prompt);
+      } else if (data?.action === 'mlt_vote') {
+        setVotes((prev) => ({ ...prev, [data.data.voterId]: data.data.targetId }));
+        sounds.click();
+      } else if (data?.action === 'mlt_reveal') {
+        setVotes(data.data.votes || {});
+        setRevealed(true);
+        if (data.data.culpritId) {
+          const loser = players.find((p) => p.id === data.data.culpritId) || null;
+          setCulprit(loser);
+          if (loser) {
+            onLoseHeart(loser.id);
+            sounds.buzz();
+            sounds.horn();
+            confetti({ particleCount: 50, spread: 60 });
+          }
+        }
+      }
+    });
+
+    return () => unsub();
+  }, [players]);
 
   // Timer countdown
   useEffect(() => {
@@ -101,6 +135,7 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
       if (loser) {
         onLoseHeart(loser.id);
         sounds.buzz();
+        sounds.horn();
         confetti({
           particleCount: 50,
           spread: 60,
@@ -108,6 +143,8 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
         });
       }
     }
+
+    multiplayer.broadcastAction('mlt_reveal', { votes: finalVotes, culpritId: worstPlayerId });
   };
 
   const handleCastVote = (targetPlayerId: string) => {
@@ -115,6 +152,7 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
     setMyVote(targetPlayerId);
     sounds.click();
     setVotes((prev) => ({ ...prev, [activeUser.id]: targetPlayerId }));
+    multiplayer.broadcastAction('mlt_vote', { voterId: activeUser.id, targetId: targetPlayerId });
   };
 
   const handleNext = () => {

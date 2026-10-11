@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, ShoppingBag, Trophy, Home } from 'lucide-react';
+import { Volume2, VolumeX, ShoppingBag, Trophy, Home, Music, PlusCircle, ShieldAlert } from 'lucide-react';
 import { Player, VatarSession } from '../types';
 import { sounds } from '../services/sound';
 
@@ -11,6 +11,10 @@ interface NavbarProps {
   onGoHome?: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  musicEnabled?: boolean;
+  onToggleMusic?: () => void;
+  onOpenCustomPrompt?: () => void;
+  onOpenBlotter?: () => void;
   inGame?: boolean;
 }
 
@@ -22,6 +26,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onGoHome,
   soundEnabled,
   onToggleSound,
+  musicEnabled,
+  onToggleMusic,
+  onOpenCustomPrompt,
+  onOpenBlotter,
   inGame
 }) => {
   return (
@@ -75,6 +83,46 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               )}
             </div>
+          )}
+
+          {/* Procedural Afrobeats Vibe Music Toggle */}
+          {onToggleMusic && (
+            <button
+              onClick={onToggleMusic}
+              className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 sm:px-3 text-xs font-bold border transition-all ${
+                musicEnabled
+                  ? 'bg-purple-600/30 border-purple-400 text-purple-200 shadow-sm animate-pulse'
+                  : 'bg-white/[0.06] border-white/10 text-slate-400 hover:text-white'
+              }`}
+              title={musicEnabled ? 'Pause Afrobeats Vibe' : 'Play Afrobeats Vibe Music'}
+            >
+              <Music className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{musicEnabled ? 'Vibe: ON' : 'Vibe'}</span>
+            </button>
+          )}
+
+          {/* Add Custom Prompt Button */}
+          {onOpenCustomPrompt && (
+            <button
+              onClick={onOpenCustomPrompt}
+              className="flex h-9 items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/15 px-2.5 sm:px-3 text-xs font-semibold text-slate-200 transition-all active:scale-95"
+              title="Add Custom Prompt"
+            >
+              <PlusCircle className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Add Prompt</span>
+            </button>
+          )}
+
+          {/* Party Blotter Report Button */}
+          {inGame && onOpenBlotter && (
+            <button
+              onClick={onOpenBlotter}
+              className="flex h-9 items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-500/30 hover:bg-rose-500/30 px-2.5 sm:px-3 text-xs font-bold text-rose-300 transition-all active:scale-95"
+              title="View Party Blotter"
+            >
+              <ShieldAlert className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Blotter</span>
+            </button>
           )}
 
           {/* Sound Toggle */}

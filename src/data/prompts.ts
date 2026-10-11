@@ -104,3 +104,15 @@ export const STORE_ITEMS: StoreItem[] = [
     unlocked: false
   }
 ];
+
+export function addCustomPrompt(prompt: PromptItem) {
+  if (prompt.type === 'truth') {
+    TRUTH_PROMPTS.unshift(prompt);
+  } else if (prompt.type === 'dare') {
+    DARE_PROMPTS.unshift(prompt);
+  } else if (prompt.type === 'most_likely' || prompt.text.startsWith('Most likely')) {
+    MOST_LIKELY_TO_PROMPTS.unshift(prompt);
+  } else {
+    NEVER_HAVE_I_EVER_PROMPTS.unshift(prompt);
+  }
+}
