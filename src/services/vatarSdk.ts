@@ -97,6 +97,19 @@ class VatarService {
       const res = await window.Vatar.purchase(productId);
       if (res && res.productId === productId) {
         this.unlockedPacks.add(productId);
+
+        // Tell your server to verify and mark delivered (ticks the integration checklist!)
+        try {
+          const { session } = await window.Vatar.session();
+          await fetch('/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session, purchaseId: res.purchaseId })
+          });
+        } catch (claimErr) {
+          console.warn('Server claim error:', claimErr);
+        }
+
         return true;
       }
       return false;
