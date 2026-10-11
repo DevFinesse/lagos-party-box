@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-950 text-white antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Lagos Party Box · Lagos Life Games</title>
+    <!-- Lagos Life / Vatar Games SDK -->
+    <script src="https://lagoslife.app/sdk/vatar-games-v1.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --font-display: 'Fredoka', cursive, system-ui;
+        --font-body: 'Plus Jakarta Sans', sans-serif;
+      }
+      body {
+        font-family: var(--font-body);
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+      }
+      h1, h2, h3, .font-display {
+        font-family: var(--font-display);
+      }
+    </style>
+  </head>
+  <body class="h-full overflow-hidden bg-[#0A0714] text-white">
+    <div id="root" class="h-full w-full"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

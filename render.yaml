@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: lagos-party-box
+    runtime: node
+    plan: free
+    region: frankfurt # or oregon
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: PORT
+        value: 8080
+      - key: VATAR_SECRET
+        sync: false
+      - key: VATAR_WEBHOOK_SECRET
+        sync: false
