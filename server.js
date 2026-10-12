@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 8080;
 const API = 'https://lagoslife.app/api/games/v1';
 const SECRET = process.env.VATAR_SECRET || 'vtr_test_mock_secret';
 const WHSEC = process.env.VATAR_WEBHOOK_SECRET || 'vtr_whsec_test_mock';
+const RESULTS_SECRET = process.env.VATAR_RESULTS_SECRET || 'vtr_res_test_mock';
 
 // Helper for Vatar API calls
 const api = async (endpoint, body) => {
@@ -95,7 +96,50 @@ const server = http.createServer(async (req, res) => {
     return res.writeHead(200).end('ok');
   }
 
-  // 3. Static asset delivery (from dist directory)
+  // 3. Vatar Multiplayer Match Result Endpoint (POST /match-result)
+  // Submits signed match result to Vatar API to settle stakes & tick multiplayer review item
+  if (req.method === 'POST' && req.url === '/match-result') {
+    const raw = await readBody(req);
+    try {
+      const { matchId, nonce, winner } = JSON.parse(raw.toString('utf-8'));
+      if (!matchId || !nonce) {
+        return res.writeHead(400).end('matchId and nonce are required');
+      }
+
+      const pathEndpoint = `/api/games/v1/matches/${encodeURIComponent(matchId)}/result`;
+      const body = JSON.stringify({ winner: winner || 'draw' });
+      const ts = String(Math.floor(Date.now() / 1000));
+      const sha = crypto.createHash('sha256').update(body).digest('hex');
+      const sig =
+        'v1=' +
+        crypto
+          .createHmac('sha256', RESULTS_SECRET)
+          .update(['POST', pathEndpoint, ts, nonce, sha].join('\n'))
+          .digest('hex');
+
+      const vatarRes = await fetch(new URL(pathEndpoint, API), {
+        method: 'POST',
+        body,
+        headers: {
+          Authorization: `Bearer ${SECRET}`,
+          'Content-Type': 'application/json',
+          'X-Vatar-Timestamp': ts,
+          'X-Vatar-Signature': sig
+        }
+      });
+
+      const resData = await vatarRes.json().catch(() => ({}));
+      console.log(`[Match Result] Submitted match ${matchId} result:`, vatarRes.status, resData);
+      return res.writeHead(vatarRes.status, { 'Content-Type': 'application/json' }).end(
+        JSON.stringify(resData)
+      );
+    } catch (err) {
+      console.error('[Match Result Error]', err);
+      return res.writeHead(500).end(err.message);
+    }
+  }
+
+  // 4. Static asset delivery (from dist directory)
   const distDir = path.join(__dirname, 'dist');
   let filePath = path.join(distDir, req.url === '/' ? 'index.html' : req.url);
 

@@ -41,9 +41,31 @@ Party Suite on Lagos Life!`;
 
   const handleCopy = () => {
     sounds.click();
-    navigator.clipboard?.writeText(summaryText);
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(summaryText).catch(() => fallbackCopy(summaryText));
+      } else {
+        fallbackCopy(summaryText);
+      }
+    } catch (e) {
+      fallbackCopy(summaryText);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
   };
 
   return (

@@ -47,10 +47,38 @@ export const Lobby: React.FC<LobbyProps> = ({
 
   const lekkiPackUnlocked = storeItems.find((i) => i.id === 'pack_lekki_afterdark')?.unlocked;
 
+  const safeCopy = (text: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    } catch (e) {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+  };
+
   const handleCopyLink = () => {
     if (!roomCode) return;
     const link = multiplayer.getInviteLink(roomCode);
-    navigator.clipboard.writeText(link);
+    safeCopy(link);
     setCopiedLink(true);
     sounds.click();
     setTimeout(() => setCopiedLink(false), 2500);
@@ -58,7 +86,7 @@ export const Lobby: React.FC<LobbyProps> = ({
 
   const handleCopyCode = () => {
     if (!roomCode) return;
-    navigator.clipboard.writeText(roomCode);
+    safeCopy(roomCode);
     setCopiedCode(true);
     sounds.click();
     setTimeout(() => setCopiedCode(false), 2500);
