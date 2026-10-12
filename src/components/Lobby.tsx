@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GameMode, DeckCategory, Player, StoreItem } from '../types';
 import { sounds } from '../services/sound';
 import { multiplayer } from '../services/multiplayer';
-import { Sparkles, Users, Lock, Plus, Trash2, Play, Share2, Copy, Check, MessageSquare, LogOut, Radio } from 'lucide-react';
+import { Sparkles, Users, Lock, Plus, Trash2, Play, Share2, Copy, Check, MessageSquare, LogOut, Radio, Zap } from 'lucide-react';
 
 interface LobbyProps {
   selectedMode: GameMode;
@@ -20,6 +20,7 @@ interface LobbyProps {
   onCreateRoom: () => void;
   onJoinRoom: (code: string) => void;
   onLeaveRoom: () => void;
+  onWorldQuickMatch?: () => void;
 }
 
 export const Lobby: React.FC<LobbyProps> = ({
@@ -37,7 +38,8 @@ export const Lobby: React.FC<LobbyProps> = ({
   isHost,
   onCreateRoom,
   onJoinRoom,
-  onLeaveRoom
+  onLeaveRoom,
+  onWorldQuickMatch
 }) => {
   const [newPlayerName, setNewPlayerName] = useState<string>('');
   const [inputCode, setInputCode] = useState<string>('');
@@ -195,14 +197,25 @@ export const Lobby: React.FC<LobbyProps> = ({
         </div>
       ) : (
         /* Create or Join Room Buttons */
-        <div className="w-full mb-6 sm:mb-8 p-3 sm:p-4 rounded-3xl bg-[#140F24]/80 border border-white/10 box-border">
+        <div className="w-full mb-6 sm:mb-8 p-3 sm:p-4 rounded-3xl bg-[#140F24]/80 border border-white/10 box-border space-y-2.5">
           <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 w-full">
+            {onWorldQuickMatch && (
+              <button
+                onClick={onWorldQuickMatch}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+                title="Pair instantly with other players currently inside Lagos Life world"
+              >
+                <Zap className="h-4 w-4 fill-slate-950 shrink-0" />
+                <span>⚡ Quick Match (Lagos Life Players)</span>
+              </button>
+            )}
+
             <button
               onClick={onCreateRoom}
               className="flex-1 w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-95"
             >
               <Radio className="h-4 w-4 text-amber-300 shrink-0" />
-              <span>Create Online Room (Get Invite Link)</span>
+              <span>Create Online Table</span>
             </button>
 
             {!showJoinInput ? (
@@ -210,7 +223,7 @@ export const Lobby: React.FC<LobbyProps> = ({
                 onClick={() => setShowJoinInput(true)}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 sm:py-3.5 px-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs sm:text-sm transition-all"
               >
-                <span>Join with Room Code</span>
+                <span>Join with Code</span>
               </button>
             ) : (
               <form onSubmit={handleJoinSubmit} className="flex gap-2 w-full sm:w-auto animate-fadeIn">
@@ -238,6 +251,10 @@ export const Lobby: React.FC<LobbyProps> = ({
                 </button>
               </form>
             )}
+          </div>
+          <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 text-center">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Connects directly with players in the Lagos Life world & Games app</span>
           </div>
         </div>
       )}

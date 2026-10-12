@@ -197,6 +197,92 @@ class VatarService {
     };
   }
 
+  // Vatar World Multiplayer Match integration
+  public async getCurrentMatch(): Promise<any | null> {
+    if (window.Vatar?.match?.current) {
+      try {
+        return await window.Vatar.match.current();
+      } catch (e) {
+        console.warn('Vatar.match.current error:', e);
+      }
+    }
+    return null;
+  }
+
+  public async quickMatch(stake: number = 0): Promise<any> {
+    if (window.Vatar?.match?.quick) {
+      try {
+        return await window.Vatar.match.quick({ stake });
+      } catch (e) {
+        console.warn('Vatar.match.quick error:', e);
+        throw e;
+      }
+    }
+    // Standalone / Sandbox simulation: simulate matchmaking with an online Lagos Life player
+    console.log('[Vatar Mock] Simulating quick match pairing with Lagos Life player...');
+    return {
+      id: `match_mock_${Date.now()}`,
+      code: 'LAGOSQ',
+      status: 'playing',
+      stake,
+      seats: 2,
+      players: [
+        { id: this.sessionData?.playerId || 'p_me', name: this.sessionData?.name || 'You (VIP)' },
+        { id: 'p_lagos_guest_99', name: 'Chioma_Lekki ✨' }
+      ]
+    };
+  }
+
+  public async createWorldMatch(stake: number = 1000, seats: number = 2): Promise<any> {
+    if (window.Vatar?.match?.create) {
+      try {
+        return await window.Vatar.match.create({ stake, seats });
+      } catch (e) {
+        console.warn('Vatar.match.create error:', e);
+        throw e;
+      }
+    }
+    // Standalone / Sandbox simulation
+    console.log('[Vatar Mock] Creating world match simulation with code LLMATCH...');
+    return {
+      id: `match_mock_${Date.now()}`,
+      code: 'LLM999',
+      status: 'open',
+      stake,
+      seats,
+      players: [
+        { id: this.sessionData?.playerId || 'p_me', name: this.sessionData?.name || 'You (VIP)' }
+      ]
+    };
+  }
+
+  public async joinWorldMatch(code: string): Promise<any> {
+    if (window.Vatar?.match?.join) {
+      try {
+        return await window.Vatar.match.join(code);
+      } catch (e) {
+        console.warn('Vatar.match.join error:', e);
+        throw e;
+      }
+    }
+    return {
+      id: `match_mock_${Date.now()}`,
+      code: code.toUpperCase(),
+      status: 'playing',
+      players: [
+        { id: 'p_host_01', name: 'Kunle (Lekki Host)' },
+        { id: this.sessionData?.playerId || 'p_me', name: this.sessionData?.name || 'You (VIP)' }
+      ]
+    };
+  }
+
+  public onWorldMatchUpdate(fn: (match: any) => void): () => void {
+    if (window.Vatar?.match?.onUpdate) {
+      return window.Vatar.match.onUpdate(fn);
+    }
+    return () => {};
+  }
+
   public setupLifecycle(onPause: () => void, onResume: () => void): () => void {
     if (window.Vatar) {
       const unsubPause = window.Vatar.onPause(onPause);

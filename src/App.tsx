@@ -110,6 +110,27 @@ export const App: React.FC = () => {
 
       setPlayers((prev) => [activeUser, ...prev.slice(1)]);
 
+      // Check if player is already in an active Lagos Life world match (Vatar.match.current)
+      vatar.getCurrentMatch().then((currentMatch) => {
+        if (currentMatch && currentMatch.players && currentMatch.players.length > 0) {
+          console.log('[Lagos Life Match] Detected active world match:', currentMatch);
+          const matchPlayers: Player[] = currentMatch.players.map((p: any, idx: number) => ({
+            id: p.id || p.playerId,
+            name: p.name || `Player ${idx + 1}`,
+            avatar: p.avatar || null,
+            hearts: 3,
+            score: 0,
+            isHost: idx === 0
+          }));
+          setPlayers(matchPlayers);
+          if (currentMatch.code) setRoomCode(currentMatch.code);
+          if (currentMatch.status === 'playing') {
+            sounds.victory();
+            setInGame(true);
+          }
+        }
+      });
+
       // Check if URL has ?room=CODE invite or ?view=MODE
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
@@ -132,6 +153,27 @@ export const App: React.FC = () => {
         } else if (viewParam === 'chat') {
           setIsChatOpen(true);
         }
+      }
+    });
+
+    // Vatar World match listener (when players join from Lagos Life world)
+    const unsubWorldMatch = vatar.onWorldMatchUpdate((m) => {
+      if (m?.players && m.players.length > 0) {
+        console.log('[Lagos Life Match] Update received:', m);
+        const matchPlayers: Player[] = m.players.map((p: any, idx: number) => ({
+          id: p.id || p.playerId,
+          name: p.name || `Player ${idx + 1}`,
+          avatar: p.avatar || null,
+          hearts: 3,
+          score: 0,
+          isHost: idx === 0
+        }));
+        setPlayers(matchPlayers);
+      }
+      if (m?.code) setRoomCode(m.code);
+      if (m?.status === 'playing') {
+        sounds.victory();
+        setInGame(true);
       }
     });
 
@@ -201,6 +243,7 @@ export const App: React.FC = () => {
 
     return () => {
       cleanup();
+      unsubWorldMatch();
       unsubRoom();
       unsubStart();
       unsubChat();
@@ -208,6 +251,31 @@ export const App: React.FC = () => {
       unsubPurchase();
     };
   }, []);
+
+  const handleWorldQuickMatch = async () => {
+    sounds.click();
+    try {
+      const match = await vatar.quickMatch(0);
+      if (match?.players) {
+        const matchPlayers: Player[] = match.players.map((p: any, idx: number) => ({
+          id: p.id || p.playerId,
+          name: p.name || `Player ${idx + 1}`,
+          avatar: p.avatar || null,
+          hearts: 3,
+          score: 0,
+          isHost: idx === 0
+        }));
+        setPlayers(matchPlayers);
+      }
+      if (match?.code) setRoomCode(match.code);
+      if (match?.status === 'playing') {
+        sounds.victory();
+        setInGame(true);
+      }
+    } catch (e) {
+      console.warn('Quick match error:', e);
+    }
+  };
 
   const handleCreateRoom = () => {
     sounds.click();
@@ -451,6 +519,7 @@ export const App: React.FC = () => {
             onCreateRoom={handleCreateRoom}
             onJoinRoom={handleJoinRoom}
             onLeaveRoom={handleLeaveRoom}
+            onWorldQuickMatch={handleWorldQuickMatch}
           />
         ) : (
           <div className="w-full flex flex-col items-center">
