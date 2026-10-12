@@ -6,6 +6,7 @@ import { sounds } from '../services/sound';
 interface NavbarProps {
   session: VatarSession | null;
   activePlayer?: Player;
+  walletBalance: number;
   onOpenShop: () => void;
   onOpenLeaderboard: () => void;
   onGoHome?: () => void;
@@ -21,6 +22,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   session,
   activePlayer,
+  walletBalance,
   onOpenShop,
   onOpenLeaderboard,
   onGoHome,
@@ -33,124 +35,111 @@ export const Navbar: React.FC<NavbarProps> = ({
   inGame
 }) => {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0E0B1A]/80 backdrop-blur-xl px-4 py-3 sm:px-6">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+    <header className="shrink-0 z-30 border-b border-white/[0.08] bg-[#0E0B1A]/95 backdrop-blur-xl px-2 py-2 sm:px-6 w-full box-border overflow-hidden">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-1 sm:gap-3 w-full">
         {/* Brand / Logo */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
           {inGame && onGoHome && (
             <button
               onClick={onGoHome}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+              className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
               title="Return to Lobby"
             >
-              <Home className="h-4 w-4" />
+              <Home className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             </button>
           )}
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="font-display text-lg font-bold tracking-tight text-white sm:text-xl">
+            <div className="flex items-center gap-1">
+              <span className="font-display text-xs sm:text-base font-bold tracking-tight text-white whitespace-nowrap">
                 LAGOS <span className="text-[#E9C9FF]">PARTY BOX</span>
               </span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              <span className={`rounded-full px-1 py-0.2 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider ${
                 session?.mode === 'live' 
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                   : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
               }`}>
-                {session?.mode === 'live' ? 'LIVE' : 'SANDBOX'}
+                {session?.mode === 'live' ? 'LIVE' : 'TEST'}
               </span>
             </div>
-            <span className="text-[11px] font-medium text-slate-400">by Vatar Games</span>
+            <span className="text-[9px] text-slate-400 hidden xs:inline">by Vatar Games</span>
           </div>
         </div>
 
-        {/* Player Profile & Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Player Profile, Wallet Balance & Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Wallet Balance Chip */}
+          <button
+            onClick={onOpenShop}
+            className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-400/40 hover:border-amber-400 text-amber-300 transition-all active:scale-95 shadow-sm"
+            title="Click to Top Up Table Cash"
+          >
+            <span className="text-xs">💰</span>
+            <span className="font-mono text-[11px] sm:text-xs font-black tracking-tight text-amber-200">
+              ₦{walletBalance.toLocaleString()}
+            </span>
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-slate-950 text-[10px] font-black ml-0.5">
+              +
+            </span>
+          </button>
+
+          {/* Player avatar on desktop */}
           {activePlayer && (
-            <div className="flex items-center gap-2 rounded-full bg-white/[0.06] border border-white/10 py-1 px-3">
-              <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-purple-500 to-amber-400 flex items-center justify-center text-[12px] font-bold text-white shadow-inner">
+            <div className="hidden md:flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 py-1 px-2.5">
+              <div className="h-5 w-5 rounded-full bg-gradient-to-tr from-purple-500 to-amber-400 flex items-center justify-center text-[10px] font-bold text-white shadow-inner">
                 {activePlayer.avatar ? (
                   <img src={activePlayer.avatar} alt={activePlayer.name} className="h-full w-full rounded-full object-cover" />
                 ) : (
                   activePlayer.name.charAt(0)
                 )}
               </div>
-              <span className="text-xs font-semibold text-slate-200 max-w-[90px] truncate sm:max-w-none">
+              <span className="text-xs font-semibold text-slate-200 max-w-[80px] truncate">
                 {activePlayer.name}
               </span>
-              {activePlayer.hearts > 0 && (
-                <span className="text-xs text-rose-400 font-bold ml-1">
-                  {'❤️'.repeat(Math.min(activePlayer.hearts, 3))}
-                </span>
-              )}
             </div>
           )}
 
-          {/* Procedural Afrobeats Vibe Music Toggle */}
+          {/* Procedural Afrobeats Vibe Music Toggle (hidden on tiny screens) */}
           {onToggleMusic && (
             <button
               onClick={onToggleMusic}
-              className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 sm:px-3 text-xs font-bold border transition-all ${
+              className={`hidden sm:flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-bold border transition-all ${
                 musicEnabled
                   ? 'bg-purple-600/30 border-purple-400 text-purple-200 shadow-sm animate-pulse'
                   : 'bg-white/[0.06] border-white/10 text-slate-400 hover:text-white'
               }`}
               title={musicEnabled ? 'Pause Afrobeats Vibe' : 'Play Afrobeats Vibe Music'}
             >
-              <Music className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{musicEnabled ? 'Vibe: ON' : 'Vibe'}</span>
-            </button>
-          )}
-
-          {/* Add Custom Prompt Button */}
-          {onOpenCustomPrompt && (
-            <button
-              onClick={onOpenCustomPrompt}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/15 px-2.5 sm:px-3 text-xs font-semibold text-slate-200 transition-all active:scale-95"
-              title="Add Custom Prompt"
-            >
-              <PlusCircle className="h-3.5 w-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Add Prompt</span>
-            </button>
-          )}
-
-          {/* Party Blotter Report Button */}
-          {inGame && onOpenBlotter && (
-            <button
-              onClick={onOpenBlotter}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-500/30 hover:bg-rose-500/30 px-2.5 sm:px-3 text-xs font-bold text-rose-300 transition-all active:scale-95"
-              title="View Party Blotter"
-            >
-              <ShieldAlert className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Blotter</span>
+              <Music className="h-3 w-3" />
+              <span>{musicEnabled ? 'Vibe ON' : 'Vibe'}</span>
             </button>
           )}
 
           {/* Sound Toggle */}
           <button
             onClick={onToggleSound}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/15 transition-colors text-slate-300 hover:text-white"
+            className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/15 transition-colors text-slate-300 hover:text-white"
             title={soundEnabled ? 'Mute Sounds' : 'Unmute Sounds'}
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
           </button>
 
-          {/* Leaderboard */}
+          {/* Leaderboard (hidden on tiny screens) */}
           <button
             onClick={onOpenLeaderboard}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/15 transition-colors text-amber-300"
+            className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] border border-white/10 hover:bg-white/15 transition-colors text-amber-300"
             title="High Rollers Leaderboard"
           >
-            <Trophy className="h-4 w-4" />
+            <Trophy className="h-3.5 w-3.5" />
           </button>
 
-          {/* VIP Shop */}
+          {/* VIP Shop Button */}
           <button
             onClick={onOpenShop}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-[#E9C9FF] px-3 font-semibold text-[#111] hover:bg-[#f3e1ff] transition-all text-xs shadow-md shadow-purple-500/20 active:scale-95"
-            title="VIP Deck Shop"
+            className="flex h-7 sm:h-8 items-center gap-1 rounded-full bg-[#E9C9FF] px-2 sm:px-2.5 font-bold text-[#111] hover:bg-[#f3e1ff] transition-all text-[11px] sm:text-xs shadow-md shadow-purple-500/20 active:scale-95"
+            title="VIP Deck & Cash Shop"
           >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">VIP Shop</span>
+            <ShoppingBag className="h-3 w-3" />
+            <span className="hidden sm:inline">Shop</span>
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { BottleSpinner } from './BottleSpinner';
 import { TRUTH_PROMPTS, DARE_PROMPTS } from '../data/prompts';
 import { sounds } from '../services/sound';
 import { multiplayer } from '../services/multiplayer';
+import { vatar } from '../services/vatarSdk';
 import confetti from 'canvas-confetti';
 import { Flame, MessageCircle, Beer, Clock, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 
@@ -11,9 +12,12 @@ interface TruthOrDareProps {
   players: Player[];
   activeUser: Player;
   deckCategory: DeckCategory;
+  walletBalance: number;
+  onDeductBalance: (amount: number, reason: string) => boolean;
   onUpdateScore: (playerId: string, delta: number) => void;
   onNextTurn: () => void;
   onSendMessage?: (text: string) => void;
+  onOpenShop: () => void;
   isVipSkin?: boolean;
 }
 
@@ -21,9 +25,12 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   players,
   activeUser,
   deckCategory,
+  walletBalance,
+  onDeductBalance,
   onUpdateScore,
   onNextTurn,
   onSendMessage,
+  onOpenShop,
   isVipSkin
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -35,6 +42,11 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
   const [resolved, setResolved] = useState<boolean>(false);
   const [confessionText, setConfessionText] = useState<string>('');
   const [submittedConfession, setSubmittedConfession] = useState<string | null>(null);
+  const [showChickenModal, setShowChickenModal] = useState<boolean>(false);
+  const [isPayingChickenFine, setIsPayingChickenFine] = useState<boolean>(false);
+  const [chickenFinePaid, setChickenFinePaid] = useState<boolean>(false);
+
+  const CHICKEN_OUT_FEE = 1000;
 
   // Sync with other multiplayer clients in room
   useEffect(() => {
@@ -142,11 +154,41 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
     multiplayer.broadcastAction('tod_resolve', { completed: true });
   };
 
-  const handleChickenOut = () => {
+  const finalizeChickenOut = () => {
     setResolved(true);
     setTimerActive(false);
+    setChickenFinePaid(true);
     sounds.buzz();
-    multiplayer.broadcastAction('tod_resolve', { completed: false });
+    multiplayer.broadcastAction('tod_resolve', { completed: false, fine: CHICKEN_OUT_FEE });
+  };
+
+  const handleChickenOut = () => {
+    // If local user is the one in the hot seat, deduct ₦1,000 fine
+    if (selectedPlayer?.id === activeUser.id) {
+      const ok = onDeductBalance(CHICKEN_OUT_FEE, 'Truth or Dare Chicken Out Fine');
+      if (ok) {
+        finalizeChickenOut();
+      } else {
+        sounds.buzz();
+        setShowChickenModal(true);
+      }
+    } else {
+      finalizeChickenOut();
+    }
+  };
+
+  const handlePayChickenViaVatar = async () => {
+    setIsPayingChickenFine(true);
+    sounds.click();
+    try {
+      const ok = await vatar.purchasePack('chicken_out_fine');
+      if (ok) {
+        setShowChickenModal(false);
+        finalizeChickenOut();
+      }
+    } finally {
+      setIsPayingChickenFine(false);
+    }
   };
 
   const handleSendConfession = (e?: React.FormEvent) => {
@@ -343,17 +385,25 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
                   </button>
                   <button
                     onClick={handleChickenOut}
-                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 py-3 px-5 rounded-full bg-white/10 hover:bg-white/15 text-rose-300 font-bold border border-rose-500/30 transition-all active:scale-95"
+                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 py-3 px-4 rounded-full bg-white/10 hover:bg-white/15 text-rose-300 font-bold border border-rose-500/30 transition-all active:scale-95"
                   >
-                    <XCircle className="h-5 w-5" />
-                    <span>Chicked Out 🐔</span>
+                    <XCircle className="h-5 w-5 shrink-0" />
+                    <div className="flex flex-col text-left">
+                      <span className="text-xs sm:text-sm leading-tight">Chicken Out 🐔</span>
+                      <span className="text-[10px] text-rose-400 font-mono">Fine: ₦{CHICKEN_OUT_FEE.toLocaleString()}</span>
+                    </div>
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center mt-6 w-full animate-fadeIn">
+                  {chickenFinePaid && (
+                    <div className="mb-3 px-4 py-2 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold animate-fadeIn">
+                      🐔 Chicken Penalty Settled: ₦{CHICKEN_OUT_FEE.toLocaleString()} deducted!
+                    </div>
+                  )}
                   <button
                     onClick={resetRound}
-                    className="flex items-center justify-center gap-2 py-3.5 px-8 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/30 hover:brightness-105 transition-all active:scale-95"
+                    className="flex items-center justify-center gap-2 py-3.5 px-8 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/30 hover:brightness-105 transition-all active:scale-95 text-xs sm:text-sm"
                   >
                     <span>NEXT ROUND</span>
                     <ArrowRight className="h-5 w-5" />
@@ -365,21 +415,60 @@ export const TruthOrDare: React.FC<TruthOrDareProps> = ({
 
           {/* Forfeit Resolution */}
           {choiceType === 'forfeit' && (
-            <div className="w-full flex flex-col items-center p-8 rounded-3xl bg-[#1B122B] border border-amber-500/30 text-center animate-scaleUp">
+            <div className="w-full flex flex-col items-center p-6 sm:p-8 rounded-3xl bg-[#1B122B] border border-amber-500/30 text-center animate-scaleUp">
               <span className="text-4xl mb-2">🍻</span>
               <h3 className="font-display text-xl font-bold text-amber-300">FORFEIT ACCEPTED</h3>
-              <p className="text-slate-300 text-sm mt-2 max-w-sm">
-                {selectedPlayer.name} dodged the bullet! They must take a shot, drink a glass of water in one gulp, or pay ₦100 Lagos Life coins into the table pot.
+              <p className="text-slate-300 text-xs sm:text-sm mt-2 max-w-sm">
+                {selectedPlayer.name} dodged the bullet! A mandatory ₦{CHICKEN_OUT_FEE.toLocaleString()} penalty is required to bail out of the hot seat.
               </p>
               <button
                 onClick={resetRound}
-                className="mt-6 flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold transition-all shadow-lg active:scale-95"
+                className="mt-6 flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold transition-all shadow-lg active:scale-95 text-xs sm:text-sm"
               >
                 <span>NEXT PLAYER</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Chicken Bailout Modal */}
+      {showChickenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-sm rounded-3xl bg-[#140E26] border-2 border-rose-500/40 p-6 shadow-2xl text-white text-center">
+            <span className="text-4xl block mb-2">🐔</span>
+            <h3 className="font-display text-lg font-black text-white uppercase tracking-wide">
+              Chicken Out Penalty Fee
+            </h3>
+            <p className="text-xs text-slate-300 mt-2 mb-4 leading-relaxed">
+              No dodging in Lagos without consequence! Chickening out costs <b className="text-rose-400">₦{CHICKEN_OUT_FEE.toLocaleString()}</b>. Your current balance is <b className="text-amber-300">₦{walletBalance.toLocaleString()}</b>.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={handlePayChickenViaVatar}
+                disabled={isPayingChickenFine}
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+              >
+                {isPayingChickenFine ? 'Processing Vatar Checkout…' : `Pay ₦${CHICKEN_OUT_FEE.toLocaleString()} Bailout Ticket`}
+              </button>
+              <button
+                onClick={() => {
+                  setShowChickenModal(false);
+                  onOpenShop();
+                }}
+                className="w-full py-2.5 px-4 rounded-2xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/30 text-purple-200 text-xs font-bold transition-all"
+              >
+                Top Up Table Wallet
+              </button>
+              <button
+                onClick={() => setShowChickenModal(false)}
+                className="w-full py-2 rounded-2xl text-slate-400 hover:text-white text-xs font-semibold"
+              >
+                Cancel / Face The Challenge!
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

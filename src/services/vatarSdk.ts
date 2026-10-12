@@ -36,6 +36,7 @@ class VatarService {
   private sessionData: VatarSession | null = null;
   private isStandalone: boolean = false;
   private unlockedPacks: Set<string> = new Set();
+  private purchaseListeners: Set<(p: { productId: string; purchaseId?: string }) => void> = new Set();
 
   constructor() {
     try {
@@ -56,10 +57,26 @@ class VatarService {
     } catch (e) {}
   }
 
+  public onPurchaseSuccess(cb: (p: { productId: string; purchaseId?: string }) => void): () => void {
+    this.purchaseListeners.add(cb);
+    return () => this.purchaseListeners.delete(cb);
+  }
+
+  private notifyPurchase(p: { productId: string; purchaseId?: string }) {
+    this.purchaseListeners.forEach((cb) => {
+      try {
+        cb(p);
+      } catch (err) {
+        console.error('[Vatar] Error in purchase callback:', err);
+      }
+    });
+  }
+
   private async claimPurchase(p: { purchaseId: string; productId: string }) {
     if (!p?.purchaseId) return;
     this.unlockedPacks.add(p.productId);
     this.saveUnlocked();
+    this.notifyPurchase(p);
 
     try {
       let sessionToken = '';
@@ -133,6 +150,8 @@ class VatarService {
       // Instant test purchase in sandbox
       console.log(`[Vatar Mock] Simulating test purchase for: ${productId}`);
       this.unlockedPacks.add(productId);
+      this.saveUnlocked();
+      this.notifyPurchase({ productId, purchaseId: 'mock_tx_' + Date.now() });
       return true;
     }
 

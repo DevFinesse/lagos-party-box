@@ -58,6 +58,39 @@ export const App: React.FC = () => {
     { id: 'p_segun', name: 'Segun', avatar: null, hearts: 3, score: 0 }
   ]);
 
+  // Table Wallet Balance State (starting ₦5,000 party credit)
+  const [walletBalance, setWalletBalance] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('ll_party_wallet_balance');
+      return saved ? parseInt(saved, 10) : 5000;
+    } catch {
+      return 5000;
+    }
+  });
+
+  const handleDeductBalance = (amount: number, reason: string): boolean => {
+    if (walletBalance >= amount) {
+      const nextBal = walletBalance - amount;
+      setWalletBalance(nextBal);
+      try {
+        localStorage.setItem('ll_party_wallet_balance', String(nextBal));
+      } catch {}
+      console.log(`[Wallet] Deducted ₦${amount} for: ${reason}. New balance: ₦${nextBal}`);
+      return true;
+    }
+    return false;
+  };
+
+  const handleAddBalance = (amount: number) => {
+    const nextBal = walletBalance + amount;
+    setWalletBalance(nextBal);
+    try {
+      localStorage.setItem('ll_party_wallet_balance', String(nextBal));
+    } catch {}
+    sounds.victory();
+    console.log(`[Wallet] Added ₦${amount}. New balance: ₦${nextBal}`);
+  };
+
   // Initialize Vatar SDK on mount
   useEffect(() => {
     vatar.initialize().then((sess) => {
@@ -162,12 +195,17 @@ export const App: React.FC = () => {
       }
     );
 
+    const unsubPurchase = vatar.onPurchaseSuccess((p) => {
+      handleItemPurchased(p.productId);
+    });
+
     return () => {
       cleanup();
       unsubRoom();
       unsubStart();
       unsubChat();
       unsubGameAction();
+      unsubPurchase();
     };
   }, []);
 
@@ -240,11 +278,28 @@ export const App: React.FC = () => {
   };
 
   const handleItemPurchased = (itemId: string) => {
-    setStoreItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, unlocked: true } : item))
-    );
-    if (itemId === 'pack_lekki_afterdark') {
-      setSelectedCategory('spicy_18');
+    if (itemId === 'wallet_topup_1000') {
+      handleAddBalance(1000);
+    } else if (itemId === 'wallet_topup_2500') {
+      handleAddBalance(2500);
+    } else if (itemId === 'wallet_topup_5000') {
+      handleAddBalance(5000);
+    } else if (itemId === 'drink_shot_1000') {
+      sounds.drink();
+      console.log('[Shop] Chilled Table Drink delivered');
+    } else if (itemId === 'chicken_out_fine') {
+      sounds.buzz();
+      console.log('[Shop] Chicken Out Bailout Ticket delivered');
+    } else if (itemId === 'loser_penalty') {
+      sounds.buzz();
+      console.log('[Shop] Loser Penalty cleared');
+    } else {
+      setStoreItems((prev) =>
+        prev.map((item) => (item.id === itemId ? { ...item, unlocked: true } : item))
+      );
+      if (itemId === 'pack_lekki_afterdark') {
+        setSelectedCategory('spicy_18');
+      }
     }
   };
 
@@ -346,6 +401,7 @@ export const App: React.FC = () => {
       <Navbar
         session={session}
         activePlayer={players[0]}
+        walletBalance={walletBalance}
         onOpenShop={() => {
           sounds.click();
           setIsShopOpen(true);
@@ -403,9 +459,12 @@ export const App: React.FC = () => {
                 players={players}
                 activeUser={players[0]}
                 deckCategory={selectedCategory}
+                walletBalance={walletBalance}
+                onDeductBalance={handleDeductBalance}
                 onUpdateScore={handleUpdateScore}
                 onNextTurn={() => {}}
                 onSendMessage={handleSendMessage}
+                onOpenShop={() => setIsShopOpen(true)}
                 isVipSkin={
                   storeItems.find((i) => i.id === 'pack_vip_bottle')?.unlocked ||
                   vatar.isUnlocked('pack_vip_bottle')
@@ -418,8 +477,11 @@ export const App: React.FC = () => {
                 players={players}
                 activeUser={players[0]}
                 deckCategory={selectedCategory}
+                walletBalance={walletBalance}
+                onDeductBalance={handleDeductBalance}
                 onLoseHeart={handleLoseHeart}
                 onNextRound={() => {}}
+                onOpenShop={() => setIsShopOpen(true)}
               />
             )}
 
@@ -428,8 +490,11 @@ export const App: React.FC = () => {
                 players={players}
                 activeUser={players[0]}
                 deckCategory={selectedCategory}
+                walletBalance={walletBalance}
+                onDeductBalance={handleDeductBalance}
                 onTakeShot={handleLoseHeart}
                 onNextRound={() => {}}
+                onOpenShop={() => setIsShopOpen(true)}
               />
             )}
           </div>
@@ -450,10 +515,15 @@ export const App: React.FC = () => {
       />
 
       {/* Floating 💸 Spray Naira Cash Button & Particles */}
-      <SprayMoney
-        onSprayBroadcast={handleSprayBroadcast}
-        activeUserName={players[0].name}
-      />
+      <div className="fixed bottom-5 left-4 z-40">
+        <SprayMoney
+          onSprayBroadcast={handleSprayBroadcast}
+          activeUserName={players[0].name}
+          walletBalance={walletBalance}
+          onDeductBalance={handleDeductBalance}
+          onOpenTopUp={() => setIsShopOpen(true)}
+        />
+      </div>
 
       {/* Floating WebRTC Voice Chat Controls */}
       <VoiceControls
@@ -479,13 +549,14 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* VIP Deck Shop Modal */}
+      {/* VIP Deck & Cash Shop Modal */}
       <ShopModal
         isOpen={isShopOpen}
         onClose={() => setIsShopOpen(false)}
         items={storeItems}
         onItemPurchased={handleItemPurchased}
         session={session}
+        walletBalance={walletBalance}
       />
 
       {/* Leaderboard Modal */}

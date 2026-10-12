@@ -4,6 +4,8 @@ export interface Player {
   avatar: string | null;
   hearts: number; // for elimination modes
   score: number;
+  walletBalance?: number;
+  drinksCount?: number;
   isHost?: boolean;
   isBot?: boolean;
 }
@@ -53,6 +55,7 @@ export interface StoreItem {
   icon: string;
   badge?: string;
   unlocked: boolean;
+  isConsumable?: boolean;
 }
 
 export interface ChatMessage {

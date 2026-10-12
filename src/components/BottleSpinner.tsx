@@ -59,31 +59,31 @@ export const BottleSpinner: React.FC<BottleSpinnerProps> = ({
       )}
 
       {/* Table Container */}
-      <div className={`relative h-[340px] w-[340px] sm:h-[400px] sm:w-[400px] rounded-full border transition-all duration-500 flex items-center justify-center ${
+      <div className={`relative h-[280px] w-[280px] sm:h-[380px] sm:w-[380px] rounded-full border transition-all duration-500 flex items-center justify-center shrink-0 ${
         isVipSkin
-          ? 'border-amber-400/50 bg-gradient-to-b from-[#251505] to-[#0d0701] shadow-[0_0_100px_-10px_rgba(245,158,11,0.55)]'
-          : 'border-purple-500/20 bg-gradient-to-b from-[#18112e] to-[#0d091a] shadow-[0_0_80px_-20px_rgba(168,85,247,0.35)]'
+          ? 'border-amber-400/50 bg-gradient-to-b from-[#251505] to-[#0d0701] shadow-[0_0_80px_-10px_rgba(245,158,11,0.55)]'
+          : 'border-purple-500/20 bg-gradient-to-b from-[#18112e] to-[#0d091a] shadow-[0_0_60px_-20px_rgba(168,85,247,0.35)]'
       }`}>
         {/* Table Felt Ring */}
-        <div className={`absolute inset-4 rounded-full border transition-colors duration-500 ${
+        <div className={`absolute inset-3 sm:inset-4 rounded-full border transition-colors duration-500 ${
           isVipSkin
             ? 'border-amber-400/30 bg-gradient-to-b from-[#1c1004] to-[#080401]'
             : 'border-amber-500/15 bg-gradient-to-b from-[#130d24] to-[#080512]'
         }`} />
         
         {/* Center Table Coaster */}
-        <div className={`absolute h-36 w-36 rounded-full border flex items-center justify-center shadow-inner transition-colors duration-500 ${
+        <div className={`absolute h-28 w-28 sm:h-36 sm:w-36 rounded-full border flex items-center justify-center shadow-inner transition-colors duration-500 ${
           isVipSkin
             ? 'border-amber-400/40 bg-amber-950/40 shadow-amber-500/20'
             : 'border-purple-400/20 bg-purple-950/30'
         }`}>
-          <div className="h-24 w-24 rounded-full border border-dashed border-amber-400/30" />
+          <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border border-dashed border-amber-400/30" />
         </div>
 
         {/* Players seated in circle */}
         {players.map((p, idx) => {
           const angle = (idx * (360 / players.length) - 90) * (Math.PI / 180);
-          const radius = 135; // px from center
+          const radius = 105; // px from center (fits comfortably within 280px table)
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius;
           const isTarget = selectedPlayer?.id === p.id && !isSpinning;

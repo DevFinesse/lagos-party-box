@@ -116,17 +116,17 @@ export const Lobby: React.FC<LobbyProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-4xl mx-auto px-4 py-6 animate-fadeIn">
+    <div className="flex flex-col items-center w-full max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 animate-fadeIn box-border overflow-x-hidden">
       {/* Hero Banner */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[#E9C9FF] text-xs font-bold uppercase tracking-widest mb-3">
-          <Sparkles className="h-3.5 w-3.5" />
+      <div className="text-center mb-6 sm:mb-8 max-w-full">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-[#E9C9FF] text-[11px] sm:text-xs font-bold uppercase tracking-widest mb-2.5">
+          <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           <span>Lagos Life Edition</span>
         </div>
-        <h1 className="font-display text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+        <h1 className="font-display text-2xl sm:text-5xl font-black text-white tracking-tight leading-tight">
           LAGOS <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E9C9FF] via-purple-300 to-amber-300">PARTY BOX</span>
         </h1>
-        <p className="text-sm sm:text-base text-slate-300 mt-2 max-w-lg mx-auto leading-relaxed">
+        <p className="text-xs sm:text-base text-slate-300 mt-2 max-w-md sm:max-w-lg mx-auto leading-relaxed">
           The ultimate cheat-proof multiplayer party suite for Lagosians. Choose your poison and call out your friends!
         </p>
       </div>
@@ -134,7 +134,7 @@ export const Lobby: React.FC<LobbyProps> = ({
       {/* ONLINE ROOM MANAGEMENT */}
       {roomCode ? (
         /* Active Online Room Card */
-        <div className="w-full p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-[#1E1136] via-[#160D2A] to-[#120824] border border-purple-500/30 shadow-[0_10px_40px_-10px_rgba(168,85,247,0.3)] mb-8 animate-scaleUp">
+        <div className="w-full p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-[#1E1136] via-[#160D2A] to-[#120824] border border-purple-500/30 shadow-[0_10px_40px_-10px_rgba(168,85,247,0.3)] mb-6 sm:mb-8 animate-scaleUp box-border">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -163,7 +163,7 @@ export const Lobby: React.FC<LobbyProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleCopyLink}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-semibold text-xs transition-all shadow-sm active:scale-95"
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white font-semibold text-xs transition-all shadow-sm active:scale-95"
               >
                 {copiedLink ? <Check className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4 text-[#E9C9FF]" />}
                 <span>{copiedLink ? 'Link Copied!' : 'Copy Invite Link'}</span>
@@ -171,7 +171,7 @@ export const Lobby: React.FC<LobbyProps> = ({
 
               <button
                 onClick={handleWhatsAppShare}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm active:scale-95"
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm active:scale-95"
               >
                 <MessageSquare className="h-4 w-4" />
                 <span>WhatsApp Invite</span>
@@ -179,7 +179,7 @@ export const Lobby: React.FC<LobbyProps> = ({
 
               <button
                 onClick={onLeaveRoom}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold text-xs transition-colors ml-auto sm:ml-0"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold text-xs transition-colors ml-auto sm:ml-0"
                 title="Leave Room"
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -195,20 +195,20 @@ export const Lobby: React.FC<LobbyProps> = ({
         </div>
       ) : (
         /* Create or Join Room Buttons */
-        <div className="w-full mb-8 p-4 rounded-3xl bg-[#140F24]/80 border border-white/10">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="w-full mb-6 sm:mb-8 p-3 sm:p-4 rounded-3xl bg-[#140F24]/80 border border-white/10 box-border">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 w-full">
             <button
               onClick={onCreateRoom}
-              className="flex-1 w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-95"
+              className="flex-1 w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-95"
             >
-              <Radio className="h-4 w-4 text-amber-300" />
-              <span>Create Online Room (Get Code & Link)</span>
+              <Radio className="h-4 w-4 text-amber-300 shrink-0" />
+              <span>Create Online Room (Get Invite Link)</span>
             </button>
 
             {!showJoinInput ? (
               <button
                 onClick={() => setShowJoinInput(true)}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-sm transition-all"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 sm:py-3.5 px-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs sm:text-sm transition-all"
               >
                 <span>Join with Room Code</span>
               </button>
@@ -220,7 +220,7 @@ export const Lobby: React.FC<LobbyProps> = ({
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value.toUpperCase())}
                   maxLength={6}
-                  className="w-36 rounded-2xl bg-black/60 border border-purple-400 px-3 py-2 text-center font-mono font-bold text-white text-sm focus:outline-none tracking-widest uppercase"
+                  className="w-36 rounded-2xl bg-black/60 border border-purple-400 px-3 py-2 text-center font-mono font-bold text-white text-xs sm:text-sm focus:outline-none tracking-widest uppercase"
                   autoFocus
                 />
                 <button

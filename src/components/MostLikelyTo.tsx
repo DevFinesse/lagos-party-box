@@ -3,23 +3,30 @@ import { Player, PromptItem, DeckCategory } from '../types';
 import { MOST_LIKELY_TO_PROMPTS } from '../data/prompts';
 import { sounds } from '../services/sound';
 import { multiplayer } from '../services/multiplayer';
+import { vatar } from '../services/vatarSdk';
 import confetti from 'canvas-confetti';
-import { Clock, ArrowRight, Heart, AlertCircle } from 'lucide-react';
+import { Clock, ArrowRight, Heart, AlertCircle, Sparkles, ShoppingBag } from 'lucide-react';
 
 interface MostLikelyToProps {
   players: Player[];
   activeUser: Player;
   deckCategory: DeckCategory;
+  walletBalance: number;
+  onDeductBalance: (amount: number, reason: string) => boolean;
   onLoseHeart: (playerId: string) => void;
   onNextRound: () => void;
+  onOpenShop: () => void;
 }
 
 export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
   players,
   activeUser,
   deckCategory,
+  walletBalance,
+  onDeductBalance,
   onLoseHeart,
-  onNextRound
+  onNextRound,
+  onOpenShop
 }) => {
   const [currentPrompt, setCurrentPrompt] = useState<PromptItem | null>(null);
   const [votes, setVotes] = useState<Record<string, string>>({}); // voterId -> targetPlayerId
@@ -27,6 +34,11 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
   const [timer, setTimer] = useState<number>(15);
   const [revealed, setRevealed] = useState<boolean>(false);
   const [culprit, setCulprit] = useState<Player | null>(null);
+  const [finedMe, setFinedMe] = useState<boolean>(false);
+  const [showLoserModal, setShowLoserModal] = useState<boolean>(false);
+  const [isPayingLoserFine, setIsPayingLoserFine] = useState<boolean>(false);
+
+  const LOSER_FEE = 1000;
 
   // Initialize new prompt
   const pickNewPrompt = (providedPrompt?: PromptItem) => {
@@ -47,6 +59,8 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
     setMyVote(null);
     setRevealed(false);
     setCulprit(null);
+    setFinedMe(false);
+    setShowLoserModal(false);
     setTimer(15);
     sounds.suspense();
   };
@@ -141,10 +155,34 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
           spread: 60,
           origin: { y: 0.7 }
         });
+
+        // If local player lost, deduct ₦1,000 penalty fee
+        if (loser.id === activeUser.id) {
+          const ok = onDeductBalance(LOSER_FEE, 'Most Likely To Loser Penalty');
+          if (ok) {
+            setFinedMe(true);
+          } else {
+            setShowLoserModal(true);
+          }
+        }
       }
     }
 
     multiplayer.broadcastAction('mlt_reveal', { votes: finalVotes, culpritId: worstPlayerId });
+  };
+
+  const handlePayLoserViaVatar = async () => {
+    setIsPayingLoserFine(true);
+    sounds.click();
+    try {
+      const ok = await vatar.purchasePack('loser_penalty');
+      if (ok) {
+        setShowLoserModal(false);
+        setFinedMe(true);
+      }
+    } finally {
+      setIsPayingLoserFine(false);
+    }
   };
 
   const handleCastVote = (targetPlayerId: string) => {
@@ -161,35 +199,35 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-2xl mx-auto px-4 py-4 animate-fadeIn">
+    <div className="flex flex-col items-center w-full max-w-lg mx-auto px-2 sm:px-4 py-2 animate-fadeIn box-border overflow-x-hidden">
       {/* Header Prompt Card */}
       {currentPrompt && (
-        <div className="w-full flex flex-col items-center p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-[#1C1236] to-[#100A22] border border-purple-400/30 shadow-[0_10px_40px_-10px_rgba(168,85,247,0.3)] mb-6 text-center">
-          <div className="flex items-center justify-between w-full mb-3">
-            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+        <div className="w-full max-w-full flex flex-col items-center p-4 sm:p-6 rounded-3xl bg-gradient-to-b from-[#1C1236] to-[#100A22] border border-purple-400/30 shadow-[0_10px_40px_-10px_rgba(168,85,247,0.3)] mb-4 text-center box-border">
+          <div className="flex items-center justify-between w-full mb-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
               🫵 MOST LIKELY TO...
             </span>
 
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-xs font-bold ${
+            <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold ${
               timer <= 5 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse' : 'bg-white/10 text-white'
             }`}>
-              <Clock className="h-3.5 w-3.5" />
+              <Clock className="h-3 w-3" />
               <span>{timer}s</span>
             </div>
           </div>
 
-          <h2 className="font-display text-xl sm:text-2xl font-bold text-white leading-relaxed my-2">
+          <h2 className="font-display text-lg sm:text-2xl font-bold text-white leading-relaxed my-2">
             "{currentPrompt.text}"
           </h2>
 
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-400 mt-1">
             {!revealed ? 'Tap the player you think fits this best!' : 'The votes are in!'}
           </p>
         </div>
       )}
 
       {/* Players Voting Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+      <div className="grid grid-cols-2 gap-2.5 w-full max-w-full box-border">
         {players.map((p) => {
           const isSelectedByMe = myVote === p.id;
           const voteCount = Object.values(votes).filter((v) => v === p.id).length;
@@ -200,7 +238,7 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
               key={p.id}
               onClick={() => handleCastVote(p.id)}
               disabled={revealed}
-              className={`relative flex flex-col items-center p-4 rounded-2xl border transition-all text-left ${
+              className={`relative flex flex-col items-center p-3 rounded-2xl border transition-all text-center w-full box-border ${
                 isCulprit
                   ? 'bg-rose-950/50 border-rose-500 ring-2 ring-rose-500/50 scale-[1.02] shadow-lg shadow-rose-500/20'
                   : isSelectedByMe
@@ -252,21 +290,79 @@ export const MostLikelyTo: React.FC<MostLikelyToProps> = ({
       {revealed && (
         <div className="mt-8 flex flex-col items-center w-full animate-fadeIn">
           {culprit && (
-            <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm mb-4">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>
-                <strong>{culprit.name}</strong> took the most votes and lost 1 heart!
-              </span>
+            <div className={`flex flex-col items-center gap-1.5 p-3.5 rounded-2xl border text-xs sm:text-sm mb-4 text-center w-full max-w-md ${
+              culprit.id === activeUser.id 
+                ? 'bg-rose-950/60 border-rose-500/50 text-rose-200' 
+                : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'
+            }`}>
+              <div className="flex items-center gap-1.5 font-black">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                <span>
+                  {culprit.id === activeUser.id 
+                    ? '🚨 YOU WERE CALLED OUT!' 
+                    : `🎯 ${culprit.name} took the most votes!`}
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs">
+                {culprit.id === activeUser.id ? (
+                  finedMe 
+                    ? `Lost 1 heart and ₦${LOSER_FEE.toLocaleString()} Loser Penalty deducted from your table balance!` 
+                    : `Lost 1 heart! Mandatory ₦${LOSER_FEE.toLocaleString()} Loser Penalty required.`
+                ) : (
+                  `${culprit.name} lost 1 heart and must pay the table loser penalty.`
+                )}
+              </p>
             </div>
           )}
 
           <button
             onClick={handleNext}
-            className="flex items-center justify-center gap-2 py-3.5 px-8 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/30 hover:brightness-105 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 py-3.5 px-8 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/30 hover:brightness-105 transition-all active:scale-95 text-xs sm:text-sm"
           >
             <span>NEXT PROMPT</span>
-            <ArrowRight className="h-5 w-5" />
+            <ArrowRight className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {/* Loser Fine Bailout Modal */}
+      {showLoserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-sm rounded-3xl bg-[#140E26] border-2 border-rose-500/40 p-6 shadow-2xl text-white text-center">
+            <span className="text-4xl block mb-2">🎯</span>
+            <h3 className="font-display text-lg font-black text-white uppercase tracking-wide">
+              Loser Table Penalty
+            </h3>
+            <p className="text-xs text-slate-300 mt-2 mb-4 leading-relaxed">
+              The table unanimously voted you as Most Likely To! Losers must settle a <b className="text-rose-400">₦{LOSER_FEE.toLocaleString()}</b> penalty. Your balance is <b className="text-amber-300">₦{walletBalance.toLocaleString()}</b>.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={handlePayLoserViaVatar}
+                disabled={isPayingLoserFine}
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>{isPayingLoserFine ? 'Opening Vatar Checkout…' : `Pay ₦${LOSER_FEE.toLocaleString()} via Vatar Pay`}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowLoserModal(false);
+                  onOpenShop();
+                }}
+                className="w-full py-2.5 px-4 rounded-2xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/30 text-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                <span>Top Up Table Wallet</span>
+              </button>
+              <button
+                onClick={() => setShowLoserModal(false)}
+                className="w-full py-2 rounded-2xl text-slate-400 hover:text-white text-xs font-semibold"
+              >
+                Accept Shame (Close)
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

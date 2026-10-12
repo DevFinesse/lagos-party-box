@@ -78,29 +78,73 @@ export const NEVER_HAVE_I_EVER_PROMPTS: PromptItem[] = [
 
 export const STORE_ITEMS: StoreItem[] = [
   {
-    id: 'pack_lekki_afterdark',
-    name: 'Lekki Afterdark (18+)',
-    price: 300,
-    description: 'Unlocks 50+ spicy, unfiltered adult truths, wild dares, and savage party call-outs.',
-    icon: '🔥',
+    id: 'pack_street_savage',
+    name: 'Lagos Street & Wahala Pack',
+    price: 1000,
+    description: 'Agbero, Danfo, Balogun market, and clubbing wahala prompts that hit home.',
+    icon: '⚡',
     badge: 'POPULAR',
     unlocked: false
   },
   {
-    id: 'pack_street_savage',
-    name: 'Lagos Street & Wahala',
-    price: 200,
-    description: 'Agbero, Danfo, Balogun market, and clubbing wahala prompts that hit home.',
-    icon: '⚡',
-    badge: 'NEW',
+    id: 'pack_lekki_afterdark',
+    name: 'Lekki Afterdark (18+)',
+    price: 1500,
+    description: 'Unlocks 50+ spicy, unfiltered adult truths, wild dares, and savage party call-outs.',
+    icon: '🔥',
+    badge: '18+ SPICY',
     unlocked: false
   },
   {
     id: 'pack_vip_bottle',
     name: 'VIP Golden Star Bottle Skin',
-    price: 500,
-    description: 'Custom golden champagne bottle spinner with sparkling VIP table animations.',
+    price: 2500,
+    description: 'Custom 24K golden champagne bottle spinner with sparkling VIP table animations.',
     icon: '🍾',
+    badge: 'LUXURY',
+    unlocked: false
+  },
+  {
+    id: 'wallet_topup_1000',
+    name: '₦1,000 Cash Spray Bundle',
+    price: 1000,
+    description: 'Adds ₦1,000 to your table wallet to spray crisp bills and pay table drink penalties.',
+    icon: '💸',
+    badge: 'INSTANT',
+    unlocked: false
+  },
+  {
+    id: 'wallet_topup_2500',
+    name: '₦2,500 Big Baller Roll',
+    price: 2500,
+    description: 'Adds ₦2,500 to your table wallet for non-stop spraying and drink rounds.',
+    icon: '💎',
+    badge: 'BEST VALUE',
+    unlocked: false
+  },
+  {
+    id: 'wallet_topup_5000',
+    name: '₦5,000 Odogwu High Roller Vault',
+    price: 5000,
+    description: 'Adds ₦5,000 to your table wallet like a true Lagos billionaire.',
+    icon: '👑',
+    badge: 'ODOGWU',
+    unlocked: false
+  },
+  {
+    id: 'drink_shot_1000',
+    name: 'Chilled Table Drink (NHIE)',
+    price: 1000,
+    description: 'Buy a drink for your Never Have I Ever confession like a real VIP.',
+    icon: '🍻',
+    unlocked: false
+  },
+  {
+    id: 'chicken_out_fine',
+    name: 'Chicken Out Bailout Ticket',
+    price: 1000,
+    description: 'Pay the mandatory forfeit fine when you chickened out of a Truth or Dare.',
+    icon: '🐔',
     unlocked: false
   }
 ];

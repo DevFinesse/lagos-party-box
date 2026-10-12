@@ -14,11 +14,21 @@ interface FallingBill {
 interface SprayMoneyProps {
   onSprayBroadcast?: () => void;
   activeUserName: string;
+  walletBalance: number;
+  onDeductBalance: (amount: number, reason: string) => boolean;
+  onOpenTopUp: () => void;
 }
 
-export const SprayMoney: React.FC<SprayMoneyProps> = ({ onSprayBroadcast, activeUserName }) => {
+export const SprayMoney: React.FC<SprayMoneyProps> = ({
+  onSprayBroadcast,
+  activeUserName,
+  walletBalance,
+  onDeductBalance,
+  onOpenTopUp
+}) => {
   const [bills, setBills] = useState<FallingBill[]>([]);
   const [sprayAlert, setSprayAlert] = useState<string | null>(null);
+  const [showLowBalanceModal, setShowLowBalanceModal] = useState<boolean>(false);
 
   const triggerSpray = useCallback((sprayerName?: string) => {
     sounds.sprayMoney();
@@ -47,8 +57,15 @@ export const SprayMoney: React.FC<SprayMoneyProps> = ({ onSprayBroadcast, active
     }, 4500);
   }, [activeUserName]);
 
-  // Handle local click on Spray button
+  // Handle local click on Spray button - strictly deducts ₦1,000 from balance
   const handleLocalSpray = () => {
+    const success = onDeductBalance(1000, 'Sprayed ₦1,000 on the table');
+    if (!success) {
+      sounds.buzz();
+      setShowLowBalanceModal(true);
+      return;
+    }
+
     triggerSpray(activeUserName);
     if (onSprayBroadcast) {
       onSprayBroadcast();
@@ -66,15 +83,50 @@ export const SprayMoney: React.FC<SprayMoneyProps> = ({ onSprayBroadcast, active
 
   return (
     <>
-      {/* Floating Spray Button (Bottom Left) */}
+      {/* Floating Spray Button */}
       <button
         onClick={handleLocalSpray}
-        className="fixed bottom-5 left-5 z-40 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 text-white font-bold text-xs shadow-[0_8px_30px_rgb(16,185,129,0.45)] hover:brightness-110 active:scale-95 transition-all border border-emerald-300/40 group"
+        className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 text-white font-bold text-xs shadow-[0_8px_30px_rgb(16,185,129,0.45)] hover:brightness-110 active:scale-95 transition-all border border-emerald-300/40 group shrink-0"
         title="Spray Cash on the Table!"
       >
-        <span className="text-base group-hover:scale-125 transition-transform">💸</span>
-        <span className="font-extrabold tracking-wide uppercase">Spray ₦1,000</span>
+        <span className="text-sm group-hover:scale-125 transition-transform">💸</span>
+        <div className="flex flex-col text-left">
+          <span className="font-extrabold tracking-wide uppercase text-[11px] leading-tight">Spray ₦1,000</span>
+          <span className="text-[9px] text-emerald-200 font-mono">Bal: ₦{walletBalance.toLocaleString()}</span>
+        </div>
       </button>
+
+      {/* Low Balance Top-Up Modal */}
+      {showLowBalanceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-sm rounded-3xl bg-[#150F26] border-2 border-emerald-500/40 p-6 shadow-2xl text-white text-center">
+            <span className="text-4xl block mb-2">💸</span>
+            <h3 className="font-display text-lg font-black text-white uppercase tracking-wide">
+              Insufficient Table Cash!
+            </h3>
+            <p className="text-xs text-slate-300 mt-2 mb-4 leading-relaxed">
+              You need at least <b className="text-emerald-400">₦1,000</b> to spray crisp notes. Your current balance is <b className="text-amber-300">₦{walletBalance.toLocaleString()}</b>.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={() => {
+                  setShowLowBalanceModal(false);
+                  onOpenTopUp();
+                }}
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+              >
+                Top Up Balance via Vatar (From ₦1,000)
+              </button>
+              <button
+                onClick={() => setShowLowBalanceModal(false)}
+                className="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-slate-400 text-xs font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Spray Alert Banner */}
       {sprayAlert && (
