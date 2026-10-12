@@ -141,7 +141,8 @@ const server = http.createServer(async (req, res) => {
 
   // 4. Static asset delivery (from dist directory)
   const distDir = path.join(__dirname, 'dist');
-  let filePath = path.join(distDir, req.url === '/' ? 'index.html' : req.url);
+  const cleanUrl = req.url.split('?')[0];
+  let filePath = path.join(distDir, cleanUrl === '/' ? 'index.html' : cleanUrl);
 
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     filePath = path.join(distDir, 'index.html');

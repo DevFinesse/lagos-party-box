@@ -77,7 +77,7 @@ export const App: React.FC = () => {
 
       setPlayers((prev) => [activeUser, ...prev.slice(1)]);
 
-      // Check if URL has ?room=CODE invite
+      // Check if URL has ?room=CODE invite or ?view=MODE
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         const inviteRoom = urlParams.get('room');
@@ -86,6 +86,18 @@ export const App: React.FC = () => {
           multiplayer.joinRoom(inviteRoom, activeUser);
           setRoomCode(inviteRoom.toUpperCase());
           setIsHost(false);
+        }
+
+        const viewParam = urlParams.get('view');
+        if (viewParam === 'truth_or_dare' || viewParam === 'most_likely_to' || viewParam === 'never_have_i_ever') {
+          setSelectedMode(viewParam as any);
+          setInGame(true);
+        } else if (viewParam === 'blotter') {
+          setIsBlotterOpen(true);
+        } else if (viewParam === 'shop') {
+          setIsShopOpen(true);
+        } else if (viewParam === 'chat') {
+          setIsChatOpen(true);
         }
       }
     });
